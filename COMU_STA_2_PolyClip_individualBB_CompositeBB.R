@@ -113,7 +113,7 @@ PlotSegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km,dir=dir)
 ### Export Individual BB ASCII files for ArcMap -----------------------------------------
 #fix error if directory doesn't exist
 #changed with depretiation of adehabitat - > what outputs do we want?
-#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
+ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
 #SegmentBBBB<-readRDS(paste0(dir,species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB.rda"))

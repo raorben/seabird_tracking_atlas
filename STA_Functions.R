@@ -897,7 +897,8 @@ mapcont <- function (x,y,contour,cellsize) {
 
 
 # BBGroupby  - combines individual BBs into groups ------------------------
-
+grping.var="year"
+dir.in.asc=(paste(dir,"species/",species,"/2_BB_out/", sep=""))
 BBGroupby<-function(species,clipperName,
                     SegmentBB, #Output from IndividualBB
                     resolution="3km",
@@ -910,7 +911,7 @@ BBGroupby<-function(species,clipperName,
   
   require(adehabitatHR)
   require(SDMTools)
-  œ
+  
   #meta<-meta[meta$species==species,]
   #grp.meta<-data.matrix(meta[grping.var])
   bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums<-SegmentBB[[3]]
@@ -974,7 +975,8 @@ BBGroupby<-function(species,clipperName,
         for (k in 1:length(segs)) {
           # open .asc
           #if (k==1)
-          ud.seg <- import.asc(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",bursts[k],".asc"), type = "numeric")
+          K<-as.character(bursts[k])
+          ud.seg <- raster(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_contour_sum1_",K,".asc"), type = "numeric")
           #ud.seg <- import.asc(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".asc"), type = "numeric")
           
           #if (k>1)

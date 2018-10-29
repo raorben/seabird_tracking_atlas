@@ -14,7 +14,8 @@ species="COMU"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
-source(paste0(dir,"scripts/Functions_CCESTA.R"))
+if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+source(paste0(gitdir,"STA_Functions.R"))
 
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
