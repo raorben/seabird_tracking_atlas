@@ -6,12 +6,13 @@ library(gridExtra)
 # data in are output from SDAFreitas_CCESTA
 
 rm(list=ls())
+species<-"COMU"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"} ##RAO
-source(paste0(dir,"scripts/Functions_CCESTA.R"))
+if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+source(paste0(gitdir,"STA_Functions.R"))
 
-species<-"COMU"
 
 # read in list of potential clipper files, polys are stored as WGS84 and then projected by PolygonPrep_CCESTA
 clipPolyList<-read.csv (paste(dir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
@@ -42,7 +43,7 @@ tracksclipped<-PolygonClip_CCESTA(all_tracks=tracks,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
 
-#track.filts.sp<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]];tracks.out<-tracksclipped[[3]];clipperName<-tracksclipped[[4]]
+track.filts.sp<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]];tracks.out<-tracksclipped[[3]];clipperName<-tracksclipped[[4]]
 
 # Adds a time component to identify and label segments -------------------------------
 tracks<-tracksclipped[[3]] #from output of PolygonClip_CCESTA
