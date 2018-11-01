@@ -32,7 +32,7 @@ meta%>%filter(species=="COMU")%>%
 
 #Tracks are single files file name matching one in the meta file. Saved in "dir.in".  
 #Output is a list, obj 1 is the concatinated data, obj 2 is a list of plots, obj 3 is a table of the filtering info
-output<-SDAFreitas_CCESTA(species=species,
+output<-trackfilter(species=species,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/COMU/1_DataIn"),
@@ -55,12 +55,12 @@ dev.off()
 
 
 # Summarizes the filtering done by the Freitas filter ---------------------
-filter.results<-SummaryFreitas_filtered(tracks)
+filter.results<-tf_filt_sum(tracks)
 head(filter.results)
 
 
 # Error estimates for each tag - based on performance after filter --------
-indiv.error.results<-SummaryFreitas_errorRetained(tracks,lcerrors,"costa") #ignore errors
+indiv.error.results<-tf_filt_error(tracks,lcerrors,"costa") #ignore errors
 head(indiv.error.results) 
 tail(indiv.error.results) #wacky things at bottom are mean, sd, and number of birds
 

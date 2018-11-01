@@ -5,7 +5,7 @@
 # *****************************
 
 
-# SDAFreitas_CCESTA -------------------------------------------------------
+# trackfilter -------------------------------------------------------
 ## 1. cuts track to deployment [meta]
 ## 2. adds in deployment location as loc 1 if meta is specified [meta]
 ## 3. add in retrieve location as end loc if meta is specified [meta]
@@ -24,7 +24,7 @@
 # swaps between loc1 and loc2 need to have been done (RAO thinks)<-add in
 # tracks need to have columns: utc,ptt,tag_id,year,uid,lat1,lon1,lat2,lon2
 
-SDAFreitas_CCESTA<-function(species,
+trackfilter<-function(species,
                             year=NA,
                             dir=dir, 
                             dir.in=dir.in, #location of csv files named by each ARGOSID
@@ -295,7 +295,7 @@ SDAFreitas_CCESTA<-function(species,
 
 # Sum-Freitas_filtered ---------------------------------------------------------
 
-SummaryFreitas_filtered<-function(tracks){
+tf_filt_sum<-function(tracks){
   require(reshape2)
   #INPUTS:
   #tracks is any Freitas filtered track file with the columns
@@ -322,7 +322,7 @@ SummaryFreitas_filtered<-function(tracks){
 
 # Sum-Freitas_errorRetained --------------------------------------------
 
-SummaryFreitas_errorRetained<-function(tracks,lcerrors,lcerrref="costa"){
+tf_filt_error<-function(tracks,lcerrors,lcerrref="costa"){
   #INPUTS:
   #tracks is any Freitas filtered track file with the columns 'lc','ptt_deploy_id','keeps'
   #data from of location errors
@@ -358,7 +358,7 @@ SummaryFreitas_errorRetained<-function(tracks,lcerrors,lcerrref="costa"){
 
 
 
-# PolygonPrep_CCESTA ------------------------------------------------------
+# PolygonPrep ------------------------------------------------------
 #### Read in shapefile(s) for indexing data, files = (1) shapefile (2) shapefile with buffer
 # lme for selecting data in a given lme
 # lme buffer for selecting data that will be processed (rasterized), thus resulting file extent will
@@ -370,7 +370,7 @@ SummaryFreitas_errorRetained<-function(tracks,lcerrors,lcerrref="costa"){
 # (so you can read the file when you load it), but the buffer(km) was added as a specification
 # in the function for more flexiabilty
 
-PolygonPrep_CCESTA<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bufferkm=33.6){
+PolygonPrep<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bufferkm=33.6){
   
   require(sp)
   require(maptools)
@@ -425,7 +425,7 @@ PolygonPrep_CCESTA<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bu
 
 
 
-# PolygonClip_CCESTA ----------------------------------------------------------
+# PolygonClip ----------------------------------------------------------
 ## Bill Henry  USGS WERC
 ## April 20, 2015
 ##
@@ -451,7 +451,7 @@ PolygonPrep_CCESTA<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bu
 ## * note cannot overwrite existing shapefiel with writeOGR, so if updating shapefiles - delete previous versions first
 ##
 
-PolygonClip_CCESTA<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreitas_CCESTA
+PolygonClip<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreitas_CCESTA
                              CLIPPERS=CLIPPERS,
                              dir.out=dir,
                              prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84"){ #default projection: the WGS84 projection that Argos Data is delivered in
@@ -554,9 +554,9 @@ PolygonClip_CCESTA<-function(all_tracks=tracks,# tracks<-output[[1]] from functi
 
 
 
-# PolygonClip_segmenttime_CCESTA ---------------------------------------------------------
+# PolygonClip_segmenttime ---------------------------------------------------------
 
-PolygonClip_segmenttime_CCESTA<-function(hrs=8,#### set hrs for minimum gap in second (converted to sec with time gap used create new segment each time animal leaves and returns in to box)
+PolygonClip_segmenttime<-function(hrs=8,#### set hrs for minimum gap in second (converted to sec with time gap used create new segment each time animal leaves and returns in to box)
                                          tracks=tracks,
                                          clipperName){
   require(trip)
@@ -643,9 +643,9 @@ mapcont <- function (x,y,contour,cellsize) {
   x[y>contour]<-0; return(x)}   # set cellsize        
 
 
-# SegmentBB_CCESTA ---------------------------------------------------------
+# SegmentBB ---------------------------------------------------------
 
-SegmentBB_CCESTA<-function(ptt, #tracking data
+SegmentBB<-function(ptt, #tracking data
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
                            speed,
@@ -896,16 +896,16 @@ mapcont <- function (x,y,contour,cellsize) {
 
 
 
+
 # BBGroupby  - combines individual BBs into groups ------------------------
 grping.var="year"
-dir.in.asc=(paste(dir,"species/",species,"/2_BB_out/", sep=""))
+
 BBGroupby<-function(species,clipperName,
                     SegmentBB, #Output from IndividualBB
                     resolution="3km",
                     contour = 99.999,
                     id.out = c("99999"),# = c("68019a","68022a3") #to exclude birds or segments "99999" excludes none
                     dir,
-                    dir.in.asc,
                     grping.var="year"){ #### desingated a grouping variable, this can be any variable in your metadata (e.i. year, site~year, site~sex~year)
   ## define grouping unit (BUT NOT TIME except Year)
   
@@ -921,7 +921,7 @@ BBGroupby<-function(species,clipperName,
   #tracksums$grp <-tracksums[grping.var]
   #  tracksums$grp <-paste(tracksums$year, tracksums$site_abbrev, sep="_")
   
-  # get unique groups (use tracksums b/c these points are contained in polygon - not a tracks will necessarily be represented in a given polygon)
+  # get unique groups (use tracksums b/c these points are contained in polygon - not all tracks will necessarily be represented in a given polygon)
   (grp.ids<-as.numeric(as.matrix(unique(tracksums$grp))))
   
   #### initialize lists to house data by desired grouping variable (group.uniq)
@@ -934,26 +934,30 @@ BBGroupby<-function(species,clipperName,
   
   #### loop through groups
   #grp.id <-1
-  for (grp.id in 1:length(grp.ids)) {
-    
-    tracksums.want<-tracksums[which(tracksums$grp==grp.ids[grp.id]),]
+  for (i in 1:length(grp.ids)) {
+    grp.id<-grp.ids[i]
+    tracksums.want<-tracksums%>%dplyr::filter(grp==grp.id)
+    #tracksums.want<-tracksums[which(tracksums$grp==grp.ids[i]),]
     
     # create summary table of # of segments from each track
-    track.freq<-as.data.frame(table(tracksums.want$deploy_id))
+    track.freq<-tracksums.want%>%dplyr::group_by(deploy_id)%>%dplyr::summarise(Freq=n())
+    track.freq$track.grp<-cbind(rep(grp.ids[i],nrow(track.freq)))
+    track.freq.old<-as.data.frame(table(tracksums.want$deploy_id))
     
     # initialize lists to house data for segment based on deploy_id
-    ud.track <- vector ("list", length(track.freq$Var1))
-    track.days <- vector ("list", length(track.freq$Var1))
+    ud.track <- vector ("list", length(track.freq$deploy_id))
+    track.days <- vector ("list", length(track.freq$deploy_id))
     
-    track.grp<-cbind(rep(grp.ids[grp.id],length(track.freq[,1])))
-    summary.grp.ids[[grp.id]]<-cbind(track.grp,track.freq)
+    #track.grp<-cbind(rep(grp.ids[i],length(track.freq[,1])))
+    summary.grp.ids[[i]]<-track.freq
     
     # sum up segments for each track
     # run through track.freq table summing segments >1
-    for (j in 1:length(track.freq$Var1)) {
+    for (j in 1:length(track.freq$deploy_id)) {
       if (track.freq$Freq[j]==1) {
         # operation for only one segment in polygon (track.freq$Freq[j]==1) == TRUE
         
+        tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]]
         # open .asc
         ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
         #ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",tracksums.want$id[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
@@ -964,11 +968,11 @@ BBGroupby<-function(species,clipperName,
       } else {
         # operation for multiple segments in polygon (track.freq$Freq[j]>1) == TRUE
         # get multiple segments
-        tracksums.want$id[tracksums.want$deploy_id==track.freq$Var1[j]]
+        tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
         
-        segs<-tracksums.want$id[tracksums.want$deploy_id==track.freq$Var1[j]]
-        bursts<-tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]]
-        days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$Var1[j]]
+        segs<-tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+        bursts<-tracksums.want$burst[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+        days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
         # list to house asc for each segment
         ud.segs.new <- vector ("list", length(segs))
         # k=3
@@ -976,6 +980,10 @@ BBGroupby<-function(species,clipperName,
           # open .asc
           #if (k==1)
           K<-as.character(bursts[k])
+          
+          idx<-which(names(bb)==K)
+          image(bb[[idx]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
+          ud.seg<-bb[[idx]]
           ud.seg <- raster(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_contour_sum1_",K,".asc"), type = "numeric")
           #ud.seg <- import.asc(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".asc"), type = "numeric")
           

@@ -114,19 +114,20 @@ PlotSegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km,dir=dir)
 ### Export Individual BB ASCII files for ArcMap -----------------------------------------
 #fix error if directory doesn't exist
 #changed with depretiation of adehabitat - > what outputs do we want?
-ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
+#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
 #SegmentBBBB<-readRDS(paste0(dir,species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB.rda"))
-#bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]]
+bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]]
 
-BBGroupby<-BBGroupby(species,clipperName,
+BBGroupby<-BBGroupby(species,
+                     clipperName,
                      SegmentBB, 
                      resolution="3km",
                      contour = 99.999,
                      id.out = c("99999"),
                      dir=dir,
-                     dir.in.asc=(paste(dir,"species/",species,"/2_BB_out/", sep="")), # directory containing BB.asc files
+                     #dir.in.asc=(paste(dir,"species/",species,"/2_BB_out/", sep="")), # directory containing BB.asc files
                      grping.var="year")  #ignore directory errors if the directories already exist
 
 
