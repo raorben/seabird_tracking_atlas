@@ -322,13 +322,13 @@ tf_filt_sum<-function(tracks){
 
 # Sum-Freitas_errorRetained --------------------------------------------
 
-tf_filt_error<-function(tracks,lcerrors,lcerrref="costa"){
+tf_filt_error<-function(tracks,filt_sum,lcerrors,lcerrref="costa"){
   #INPUTS:
   #tracks is any Freitas filtered track file with the columns 'lc','ptt_deploy_id','keeps'
   #data from of location errors
   #lcerrref=which errors to use (only costa and douglas as options currently)
   
-  filter.results<-SummaryFreitas_filtered(tracks)
+  filter.results<-filt_sum
   
   indiv.error<-merge(filter.results, lcerrors, by = 'lc', all = FALSE)
   
