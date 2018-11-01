@@ -154,7 +154,7 @@ SDAFreitas_CCESTA<-function(species,
     Tracklength_clipped<-length(track[,1])
     TrackLength_ends_added<-0
     
-    if (tagtype=="gps")track$lc<-"G"
+    if (tagtype=="gps"){track$lc<-"G"}
     
     #### insert rows in track if metadata indicates insert deployment location, inserted rows labelled with lc<-4 and are not filtered
     # does this by adding the first line again, making all values NA, then adds key info back in
