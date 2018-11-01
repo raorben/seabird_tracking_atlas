@@ -65,14 +65,11 @@ filt_error<-tf_filt_error(tracks_filt,filt_sum,lcerrors,"costa") #ignore errors
 head(filt_error) 
 tail(filt_error) #wacky things at bottom are mean, sd, and number of birds
 
-save(tracks_filt,tf_plots,tf_info,filt_sum,filt_error, 
+save(tracks_filt,tf_info,filt_sum,filt_error, 
      file = paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
 
 
-write.csv(TF$tracks_filt,file=paste0(dir,"species/",species,"/",species,"_trackfilter.csv"))
-# TF<-readRDS(file=paste0(dir,"species/",species,"/",species,"_CCESTA_1_FreitasFilt.rda"))
-# 
-# tracks<-TF[[1]];PLOTS<-OUTPUT[[2]];info<-OUTPUT[[3]];
-# filter.results<-OUTPUT[[4]];indiv.error.results<-OUTPUT[[5]]
+#Optional output formats not used in the next step (.RData file is used instead)
+#write.csv(tracks_filt,file=paste0(dir,"species/",species,"/",species,"_trackfilter.csv"))
 
 
