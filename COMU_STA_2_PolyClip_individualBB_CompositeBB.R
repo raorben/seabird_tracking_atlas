@@ -70,15 +70,6 @@ for(i in 1:length(Clipper.Plots)){
 dev.off()
 
 
-# ### export .shp with tracking data for all bird.ids (makes a folder)
-#tracks.filts.sp<-tracksclipped[[1]]
-#clipperName<-tracksclipped[[4]]
-#  writeOGR(obj=tracks.filts.sp,dsn=paste(dir,"species/",species,"/",species,'_all_pts_Freitas_in',clipperName, sep = ""),
-#           layer=paste(species,'all_pts_Freitas_in',clipperName, sep = ""),
-#           overwrite_layer='T', driver="ESRI Shapefile")
-
-
-
 
 tracks_filt_clip_seg$time.grp.var<-tracks_filt_clip_seg$year
 
@@ -268,4 +259,13 @@ ggsave(paste0(dir,filename1,".png"))
 #fix error if directory doesn't exist
 #changed with depretiation of adehabitat - > what outputs do we want?
 #ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
+
+
+# ### export .shp with tracking data for all bird.ids (makes a folder)
+#tracks.filts.sp<-tracksclipped[[1]]
+#clipperName<-tracksclipped[[4]]
+#  writeOGR(obj=tracks.filts.sp,dsn=paste(dir,"species/",species,"/",species,'_all_pts_Freitas_in',clipperName, sep = ""),
+#           layer=paste(species,'all_pts_Freitas_in',clipperName, sep = ""),
+#           overwrite_layer='T', driver="ESRI Shapefile")
+
 

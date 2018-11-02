@@ -24,16 +24,6 @@
 # swaps between loc1 and loc2 need to have been done (RAO thinks)<-add in
 # tracks need to have columns: utc,ptt,tag_id,year,uid,lat1,lon1,lat2,lon2
 
-species=species
-year=NA
-dir=dir
-dir.in=paste0(dir,"species/COMU/1_DataIn")
-tagtype="ptt"
-lcerrref="costa"
-parameters=parameters
-meta=meta
-lcerrors=lcerrors
-
 trackfilter<-function(species,
                             year=NA,
                             dir=dir, 
