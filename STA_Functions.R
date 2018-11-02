@@ -463,7 +463,7 @@ PolygonClip<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
   projWant<-CLIPPERS[[4]]
   clipperName<-CLIPPERS[[5]]
   
-  all_tracks$utc<-as.POSIXct(format(strptime(as.character(tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
+  all_tracks$utc<-as.POSIXct(format(strptime(as.character(all_tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
   
   ptt_deploy_ids<-unique(all_tracks$ptt_deploy_id)
   Clipper.Plots<-vector("list",length(ptt_deploy_ids))
