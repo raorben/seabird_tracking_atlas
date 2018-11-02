@@ -3,64 +3,59 @@ library(SDMTools)
 library(raster)
 library(ggplot2)
 library(gridExtra)
-# data in are output from SDAFreitas_CCESTA
 
 rm(list=ls())
+
+
 species<-"COMU"
+
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 source(paste0(gitdir,"STA_Functions.R"))
 
+# Read in Clipper ---------------------------------------------------------
+clipperName<-"PACSEA_convhull_All_coastclip"
 
-# read in list of potential clipper files, polys are stored as WGS84 and then projected by PolygonPrep_CCESTA
-clipPolyList<-read.csv (paste(dir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
-print(clipPolyList[26,]) # show a list of the clipper files
+# read in list of all potential clipper files
+# polys are stored as WGS84 and then projected in MakeClippers.R
+# this reads in the polygon info and the processed Clipper. 
 
-#reads in Frietas filtered data
-OUTPUT<-readRDS(paste0(dir,"species/",species,"/",species,"_CCESTA_1_FreitasFilt.rda"))
-tracks<-OUTPUT[[1]]
+polyinfo<-read.csv (paste(dir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
+print(polyinfo%>%filter(name==clipperName)) # shows clipper info. 
+clipper<-readRDS(file=paste0(dir,"polygons/",clipperName,".rda"))
+plot(clipper[[2]], axes=T,  border="gray") #clipper
+plot(clipper[[3]], add=T) #buffer
 
+# read in bird metadata ---------------------------------------------------
+meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-meta[meta$species==species,]
 
-# Pulls in requested polygon  --------------------------------------------
-#and associated projection data, projects, calculates buff, return polygons
-CLIPPERS<-PolygonPrep_CCESTA(rno=26,
-                             clipPolyList=clipPolyList, 
-                             dir=dir,
-                             plot="on",
-                             bufferkm=33.6)
+# reads in Frietas filtered tracking data for species
+# get speed value used in argosfilter::sdafilter
+load(file=paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
+speed<-tf_info$vmax[1]
 
-clipperName<-CLIPPERS[[5]]
-saveRDS(object=CLIPPERS,file=paste0(dir,"polygons/CCESTA_",clipperName,".rda"))
-CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda"))
-
-
+# #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
 ## adds a 1 or 0 for in or out of polygon, or buffer
-tracksclipped<-PolygonClip_CCESTA(all_tracks=tracks,
-                                  CLIPPERS=CLIPPERS,
+tracksclipped<-PolygonClip(all_tracks=tracks_filt,
+                                  CLIPPERS=clipper,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
 
-track.filts.sp<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]];tracks.out<-tracksclipped[[3]];clipperName<-tracksclipped[[4]]
+tracks_filt_clip_spatialdf<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]];tracks_filt_clip<-tracksclipped[[3]]
 
 # Adds a time component to identify and label segments -------------------------------
-tracks<-tracksclipped[[3]] #from output of PolygonClip_CCESTA
+tracks_filt_clip_seg<-segmentleavetime(hrs=72, tracks=tracks_filt_clip, clipperName)
 
-seg<-PolygonClip_segmenttime_CCESTA(hrs=72, tracks=tracks, clipperName)
-head(seg)
-Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(seg)))
-unique(seg[,Idx]) #how many segments?
-
-tracksclipped[[3]]<-seg #not elegant, but replaces tracks with matrix with _id2 & _id3 columns
-saveRDS(tracksclipped,file=paste0(dir,"species/",species,"/",species,"_CCESTA_2_",clipperName,".rda"))
+Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(tracks_filt_clip_seg)))
+unique(tracks_filt_clip_seg[,Idx]) #how many segments?
 
 
 # Makes Quality Control plots for PolygonClip --------------------------
-Clipper.Plots<-tracksclipped[[2]] #output of "PolygonClip_CCESTA"
-clipperName<-tracksclipped[[4]]
-pdf(paste0(dir,"species/",species,"/","COMU_CCESTA_2_",clipperName,"_plots.pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",species,"/",species,"_QCplots_",clipperName,".pdf"), onefile = TRUE)
 for(i in 1:length(Clipper.Plots)){
   top.plot <-Clipper.Plots[[i]]
   grid.arrange(top.plot)
@@ -75,51 +70,41 @@ dev.off()
 #           layer=paste(species,'all_pts_Freitas_in',clipperName, sep = ""),
 #           overwrite_layer='T', driver="ESRI Shapefile")
 
-meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "")
-meta<-meta[meta$species==species,]
 
-# get speed value used in Frietas SDA filter
-Frietas_out<-readRDS(file=paste0(dir,"species/",species,"/",species,"_CCESTA_1_FreitasFilt.rda"))
-info<-Frietas_out[[3]]
-speed=info$vmax[1]
 
-## read in all tracking data
-tracksclipped<-readRDS(file=paste0(dir,"species/",species,"/",species,"_CCESTA_2_",clipperName,".rda"))
-ptt<-tracksclipped[[3]]
-ptt$time.grp.var<-ptt$year
+
+tracks_filt_clip_seg$time.grp.var<-tracks_filt_clip_seg$year
 
 # Calculate Segment BrownianBridges ------------------------------------
-cellsize3km<-3000
+cellsize<-3000
 resolution="3km" # cell size in km, used in file names
 
-SegmentBB<-SegmentBB_CCESTA(ptt, #tracking data
+SegmentBB<-segmentBB(ptt=tracks_filt_clip_seg, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
-                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
+                            CLIPPERS=clipper, #output from: PolygonPrep_CCESTA with desired polygon
                             speed,
                             id.out = c("99999"), # to manually exclude birds or segments "99999" excludes none
                             contour=99.999, # the maximum contour to return, use 99.999 for 100 ud contours
-                            sig2=cellsize3km,#
-                            cellsize=cellsize3km,# related to error tags, in m
+                            sig2=cellsize,#
+                            cellsize=cellsize,# related to error tags, in m
                             minNo=2,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
                             id.2="seg",##all=bird.id (run entire ptt) or "seg"=clip.name_id2 (run segments of track that are in box then sum them based on number of days tracked)
                             tagtype="ptt",
                             meta=meta) #metadata from PTT_metadata_all.csv for the species
 
-saveRDS(SegmentBB,file=paste0(dir,"species/",species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB.rda"))
-SegmentBB<-readRDS(file=paste0(dir,"species/",species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB.rda"))
+saveRDS(SegmentBB,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
+SegmentBB<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
+bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]];contour=SegmentBB[[4]]
+tag <- names (bb)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
-PlotSegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km,dir=dir)
-
-### Export Individual BB ASCII files for ArcMap -----------------------------------------
-#fix error if directory doesn't exist
-#changed with depretiation of adehabitat - > what outputs do we want?
-#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
+  pdf(paste0(dir,"species/",species,"/",species,"_QCplots_",clipperName,"_segmentBB.pdf"), onefile = TRUE)
+  for (i in 1:length(tag)) {
+    image(bb[[i]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
+  }
+  dev.off()
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
-#SegmentBBBB<-readRDS(paste0(dir,species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB.rda"))
-bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]]
-
 BBGroupby<-BBGroupby(species,
                      clipperName,
                      SegmentBB, 
@@ -272,4 +257,8 @@ ggsave(paste0(dir,filename1,".png"))
 
 
 
+### Export Individual BB ASCII files for ArcMap -----------------------------------------
+#fix error if directory doesn't exist
+#changed with depretiation of adehabitat - > what outputs do we want?
+#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
 

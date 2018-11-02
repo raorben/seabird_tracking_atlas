@@ -74,7 +74,7 @@ trackfilter<-function(species,
   
   #functions needed
   require(argosfilter)
-  require(plyr)
+  #require(plyr)
   require(ggplot2)
   
   paramwant<-subset(parameters,(spp==species & tag==tagtype))
@@ -212,19 +212,19 @@ trackfilter<-function(species,
     
     
     #### delete duplicate points retaining based on 1. >lc & 2. >nb_mes, or 3. first duplicate, trash others
-    track$utc <- factor(track$utc)
-    dups<-  track[track$utc %in% track$utc[duplicated(track$utc)],]
-    dups$utc<-factor(dups$utc)
+    track$utcF <- factor(track$utc)
+    dups<-  track[track$utcF %in% track$utcF[duplicated(track$utcF)],]
+    dups$utcF<-factor(dups$utcF)
     
     if (length(dups[,1])!=0) {
       # identify duplicate records
-      dup.freq <- as.data.frame.table (tapply(dups$utc, dups$utc, length))
+      dup.freq <- as.data.frame.table (tapply(dups$utcF, dups$utcF, length))
       # k<-1
       for (k in 1:length(dup.freq[,1])) {
-        dups.test<-dups[dups$utc %in% dup.freq$Var1[k],]
+        dups.test<-dups[dups$utcF %in% dup.freq$Var1[k],]
         if ((length(unique(dups.test$lc))!=1) & ("lc" %in% names(dups.test))) {
           # first check and retain location higher lc
-          track$filtered[which(track$uid==dups.test$uid[dups.test$lc==min(dups.test$lc)])]="dup" 
+          track$filtered[which(track$uid==dups.test$uidF[dups.test$lc==min(dups.test$lc)])]="dup" 
           # second if same lc, check and retain location higher num.mes 
         } else if ((length(unique(dups.test$nb_mes))!=1) & ("nb_mes" %in% names(dups.test))) {
           track$filtered[which(track$uid==dups.test$uid[dups.test$nb_mes==min(dups.test$nb_mes)])]="dup" 
@@ -275,12 +275,15 @@ trackfilter<-function(species,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
     
     # bind all info
-    INFO<-rbind.fill(INFO,info)
+    INFO<-bind_rows(INFO,info) #was rbind_fill()
     rm(info)
+    
+    track$sensors<-as.character(track$sensors)
+    track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
     
     # bind all filtered tracks
     if (i==1) {tracks<-track
-    } else {tracks<-rbind.fill(tracks,track)}
+    } else {tracks<-bind_rows(tracks,track)}
     rm(track)}
   
   tracks$uid<-1:length(tracks[,1])
@@ -556,8 +559,8 @@ PolygonClip<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
 
 # PolygonClip_segmenttime ---------------------------------------------------------
 
-PolygonClip_segmenttime<-function(hrs=8,#### set hrs for minimum gap in second (converted to sec with time gap used create new segment each time animal leaves and returns in to box)
-                                         tracks=tracks,
+segmentleavetime<-function(hrs=8,#### set hrs for minimum gap in second (converted to sec with time gap used create new segment each time animal leaves and returns in to box)
+                                         tracks,
                                          clipperName){
   require(trip)
   #### hrs: NOTE THIS VALUE FOR EACH SPECIES/CLIPPER COMBO THAT YOU RUN - Data retained for Bridge are sensitive to this value and it is not recorded ELSEWHERE
@@ -645,7 +648,7 @@ mapcont <- function (x,y,contour,cellsize) {
 
 # SegmentBB ---------------------------------------------------------
 
-SegmentBB<-function(ptt, #tracking data
+segmentBB<-function(ptt, #tracking data
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
                            speed,
@@ -794,30 +797,30 @@ SegmentBB<-function(ptt, #tracking data
   return(ouput)
 }
 
-# PlotIndividualBB ---------------------------------------------------------
-
-PlotSegmentBB<-function(SegmentBB, species, clipperName,cellsize,dir){
-  bb<-SegmentBB[[1]]
-  bbvol<-SegmentBB[[2]]
-  contour=SegmentBB[[4]]
-  tag <- names (bb)
-  #udmap <-lapply(bb, function(x) x$ud)
-  #vmap <-lapply(bbvol, function(x) x$ud)   
-  pdf(paste0(dir,"species/",species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB_plots.pdf"), onefile = TRUE)
-  for (i in 1:length(tag)) {
-    image(bb[[i]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
-    #plot(getverticeshr(bb[[i]], 95), add=TRUE)
-    
-    #image(getvolumeUD(bb[[i]]),col = rev(viridis(15)))
-    #temp=mapcont(udmap[[i]],vmap[[i]], contour,cellsize)
-    #image(temp, col=c("light grey", topo.colors(40)))
-    #text(sum(temp))
-    #print(sum(temp))
-    #a<-getverticeshr(bb, 95)
-    #plot(a[[i]], add=TRUE, lwd=1)
-  }
-  dev.off()
-}
+# # PlotIndividualBB ---------------------------------------------------------
+# 
+# PlotSegmentBB<-function(SegmentBB, species, clipperName,cellsize,dir){
+#   bb<-SegmentBB[[1]]
+#   bbvol<-SegmentBB[[2]]
+#   contour=SegmentBB[[4]]
+#   tag <- names (bb)
+#   #udmap <-lapply(bb, function(x) x$ud)
+#   #vmap <-lapply(bbvol, function(x) x$ud)   
+#   pdf(paste0(dir,"species/",species,"/",species,"_CCESTA_3_",clipperName,"_IndividualBB_plots.pdf"), onefile = TRUE)
+#   for (i in 1:length(tag)) {
+#     image(bb[[i]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
+#     #plot(getverticeshr(bb[[i]], 95), add=TRUE)
+#     
+#     #image(getvolumeUD(bb[[i]]),col = rev(viridis(15)))
+#     #temp=mapcont(udmap[[i]],vmap[[i]], contour,cellsize)
+#     #image(temp, col=c("light grey", topo.colors(40)))
+#     #text(sum(temp))
+#     #print(sum(temp))
+#     #a<-getverticeshr(bb, 95)
+#     #plot(a[[i]], add=TRUE, lwd=1)
+#   }
+#   dev.off()
+# }
 
 # ExportASCII_IndividualBB ---------------------------------------------------------
 
