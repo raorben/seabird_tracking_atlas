@@ -24,6 +24,16 @@
 # swaps between loc1 and loc2 need to have been done (RAO thinks)<-add in
 # tracks need to have columns: utc,ptt,tag_id,year,uid,lat1,lon1,lat2,lon2
 
+species=species
+year=NA
+dir=dir
+dir.in=paste0(dir,"species/COMU/1_DataIn")
+tagtype="ptt"
+lcerrref="costa"
+parameters=parameters
+meta=meta
+lcerrors=lcerrors
+
 trackfilter<-function(species,
                             year=NA,
                             dir=dir, 
@@ -80,11 +90,11 @@ trackfilter<-function(species,
   paramwant<-subset(parameters,(spp==species & tag==tagtype))
   
   vmax <- (paramwant$vmaxSA_Tab2_W5ms_x_3SD)    
-  print(paste("maximum velocity = ",vmax))
+  #print(paste("maximum velocity = ",vmax))
   ang <- c(paramwant$ang1,paramwant$ang2)
-  print(paste("angles = ",ang))
+  #print(paste("angles = ",ang))
   distlim <-  c(paramwant$distlim1,paramwant$distlim2)
-  print(paste("distance limit = ",distlim))
+  #print(paste("distance limit = ",distlim))
   
   # lcerrors
   if(lcerrref=="costa"){
@@ -109,6 +119,7 @@ trackfilter<-function(species,
   
   Track.Plots<-vector("list",length(meta[,1]))
   INFO<-data.frame()
+  Tracks<-NULL
   # loop through birds
   for (i in 1:length(meta[,1])) {			  
     animal.id <- (meta$animal_id[i])
@@ -117,9 +128,9 @@ trackfilter<-function(species,
     print(animal.id)
     
     #### read in track
-    track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T)
+    track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
     print ('Total rows')
-    track$utc<-as.character(track$utc)
+    #track$utc<-as.character(track$utc)
     TrackLengthOrig<-(length (track[,1]))
     print (length (track[,1]))
     #allows for two different styles of datetimes in logger files:
@@ -270,10 +281,13 @@ trackfilter<-function(species,
             "latlong=0",latlon0,"dup removed", 
             dupremoved,"filtered",filtered,
             "retained",retained))
+   
     info<-data.frame(animal.id,ptt_deploy_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
-    
+    info$animal.id<-as.character(info$animal.id)
+    info$lcerrref<-as.character(info$lcerrref)
+
     # bind all info
     INFO<-bind_rows(INFO,info) #was rbind_fill()
     rm(info)
@@ -282,11 +296,10 @@ trackfilter<-function(species,
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
     
     # bind all filtered tracks
-    if (i==1) {tracks<-track
-    } else {tracks<-bind_rows(tracks,track)}
+    Tracks<-bind_rows(Tracks,track)
     rm(track)}
   
-  tracks$uid<-1:length(tracks[,1])
+  Tracks$uid<-1:length(Tracks[,1])
   ouput<-list(tracks,Track.Plots,INFO)
   return(ouput)
 }
@@ -459,6 +472,8 @@ PolygonClip<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
                              dir.out=dir,
                              prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84"){ #default projection: the WGS84 projection that Argos Data is delivered in
   
+  require(stringr)
+  require(ggplot2)
   #Extraction of CLIPPER List from PolygonPrep_CCESTA
   clipper<-CLIPPERS[[1]]
   clipper_proj<-CLIPPERS[[2]]

@@ -46,7 +46,6 @@ tf_plots<-tf_out[[2]] #list of ggplots showing prefiltered and filtered location
 tf_info<-tf_out[[3]]
 
 
-
 # Makes Quality Control plots for Freitas Filter --------------------------
 pdf(paste0(dir,"species/",species,"/",species,"_trackfilter_QC_plots.pdf"), onefile = TRUE)
 for(i in 1:length(tf_plots)){

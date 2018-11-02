@@ -2,8 +2,15 @@ library(adehabitatHR)
 library(SDMTools)
 library(raster)
 library(ggplot2)
-library(gridExtra)
+library(dplyr)
+library(stringr)
 
+
+library(dplyr)
+library(sp)
+library(ggplot2) #tracksclipped
+library(trip) #segmentleavetime
+library(gridExtra)#for pdfs
 rm(list=ls())
 
 
