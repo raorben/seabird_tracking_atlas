@@ -24,7 +24,8 @@ CLIPPERS<-PolygonPrep(rno=26,
                       clipPolyList=clipPolyList, 
                       dir=dir,
                       plot="on",
-                      bufferkm=33.6)
+                      bufferkm=33.6,
+                      cellsize=3000)
 
 clipperName<-CLIPPERS[[5]]
 saveRDS(object=CLIPPERS,file=paste0(dir,"polygons/",clipperName,".rda"))

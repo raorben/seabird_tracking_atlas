@@ -74,7 +74,6 @@ trackfilter<-function(species,
   
   #functions needed
   require(argosfilter)
-  #require(plyr)
   require(ggplot2)
   
   paramwant<-subset(parameters,(spp==species & tag==tagtype))
@@ -290,7 +289,7 @@ trackfilter<-function(species,
     rm(track)}
   
   Tracks$uid<-1:length(Tracks[,1])
-  ouput<-list(tracks,Track.Plots,INFO)
+  ouput<-list(Tracks,Track.Plots,INFO)
   return(ouput)
 }
 
@@ -376,7 +375,12 @@ tf_filt_error<-function(tracks,filt_sum,lcerrors,lcerrref="costa"){
 # (so you can read the file when you load it), but the buffer(km) was added as a specification
 # in the function for more flexiabilty
 
-PolygonPrep<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bufferkm=33.6){
+PolygonPrep<-function(rno,
+                      clipPolyList=clipPolyList, 
+                      dir=dir,
+                      plot="on",
+                      bufferkm=33.6,
+                      cellsize=3000){
   
   require(sp)
   require(maptools)
@@ -422,7 +426,19 @@ PolygonPrep<-function(rno,clipPolyList=clipPolyList, dir=dir,plot="on",bufferkm=
     p1<-p1 + plot(clipperBuff_proj, add=T)
   }
   
-  CLIPPERS<-list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
+  #### get extent of clipper buffer and make grid for KD analysis
+  ext<-extent(clipperBuff_proj[1,1])
+  grid.lon <- c(ext@xmin, ext@xmin, ext@xmax, ext@xmax)
+  grid.lat <- c(ext@ymax, ext@ymin, ext@ymin, ext@ymax)
+  grid.loc <- SpatialPoints(cbind(grid.lon, grid.lat))
+  rast <- ascgen(grid.loc, cellsize=cellsize)
+  
+  #plot(rast)  
+  #plot(clipper_proj, col="white",add=T)
+  #plot(clipperBuff_proj, add=T, border="gray")
+  #plot(ext, col="green",add=T)
+  
+  CLIPPERS<-list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName,rast)
   return(CLIPPERS)
 }
 
@@ -685,13 +701,13 @@ segmentBB<-function(ptt, #tracking data
   if (clipperName != clipperNamecheck){print("Clippers don't match, try again")}
   
   #### get extent of clipper buffer and make grid for KD analysis
-  clipperBuff_proj<-CLIPPERS[[3]]; clipper_proj<-CLIPPERS[[2]]
-  ext<-extent(clipperBuff_proj[1,1])
-  grid.lon <- c(ext@xmin, ext@xmin, ext@xmax, ext@xmax)
-  grid.lat <- c(ext@ymax, ext@ymin, ext@ymin, ext@ymax)
-  grid.loc <- SpatialPoints(cbind(grid.lon, grid.lat))
-  rast <- ascgen(grid.loc, cellsize=cellsize)
-  
+  #clipperBuff_proj<-CLIPPERS[[3]]; clipper_proj<-CLIPPERS[[2]]
+  #ext<-extent(clipperBuff_proj[1,1])
+  #grid.lon <- c(ext@xmin, ext@xmin, ext@xmax, ext@xmax)
+  #grid.lat <- c(ext@ymax, ext@ymin, ext@ymin, ext@ymax)
+  #grid.loc <- SpatialPoints(cbind(grid.lon, grid.lat))
+  #rast <- ascgen(grid.loc, cellsize=cellsize)
+  rast<-CLIPPERS[[6]]
   #plot(rast)  
   #plot(clipper_proj, col="white",add=T)
   #plot(clipperBuff_proj, add=T, border="gray")
@@ -906,157 +922,9 @@ mapcont <- function (x,y,contour,cellsize) {
 
 
 # BBGroupby  - combines individual BBs into groups ------------------------
-grping.var="year"
 
-BBGroupby<-function(species,clipperName,
-                    SegmentBB, #Output from IndividualBB
-                    resolution="3km",
-                    contour = 99.999,
-                    id.out = c("99999"),# = c("68019a","68022a3") #to exclude birds or segments "99999" excludes none
-                    dir,
-                    grping.var="year"){ #### desingated a grouping variable, this can be any variable in your metadata (e.i. year, site~year, site~sex~year)
-  ## define grouping unit (BUT NOT TIME except Year)
-  
-  require(adehabitatHR)
-  require(SDMTools)
-  
-  #meta<-meta[meta$species==species,]
-  #grp.meta<-data.matrix(meta[grping.var])
-  bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums<-SegmentBB[[3]]
-  
-  #### set grouping variable again
-  if (grping.var=="year"){ tracksums$grp<-lubridate::year(tracksums$date.begin)}
-  #tracksums$grp <-tracksums[grping.var]
-  #  tracksums$grp <-paste(tracksums$year, tracksums$site_abbrev, sep="_")
-  
-  # get unique groups (use tracksums b/c these points are contained in polygon - not all tracks will necessarily be represented in a given polygon)
-  (grp.ids<-as.numeric(as.matrix(unique(tracksums$grp))))
-  
-  #### initialize lists to house data by desired grouping variable (group.uniq)
-  # list to house uds normalized by track duration
-  ud.grp.ids <- vector ("list", length(grp.ids))
-  # list to house raster of individuals/cell
-  noindiv.grp.ids <- vector ("list", length(grp.ids))
-  # list to house summary data for each year
-  summary.grp.ids <- vector ("list", length(grp.ids))
-  
-  #### loop through groups
-  #grp.id <-1
-  for (i in 1:length(grp.ids)) {
-    grp.id<-grp.ids[i]
-    tracksums.want<-tracksums%>%dplyr::filter(grp==grp.id)
-    #tracksums.want<-tracksums[which(tracksums$grp==grp.ids[i]),]
-    
-    # create summary table of # of segments from each track
-    track.freq<-tracksums.want%>%dplyr::group_by(deploy_id)%>%dplyr::summarise(Freq=n())
-    track.freq$track.grp<-cbind(rep(grp.ids[i],nrow(track.freq)))
-    track.freq.old<-as.data.frame(table(tracksums.want$deploy_id))
-    
-    # initialize lists to house data for segment based on deploy_id
-    ud.track <- vector ("list", length(track.freq$deploy_id))
-    track.days <- vector ("list", length(track.freq$deploy_id))
-    
-    #track.grp<-cbind(rep(grp.ids[i],length(track.freq[,1])))
-    summary.grp.ids[[i]]<-track.freq
-    
-    # sum up segments for each track
-    # run through track.freq table summing segments >1
-    for (j in 1:length(track.freq$deploy_id)) {
-      if (track.freq$Freq[j]==1) {
-        # operation for only one segment in polygon (track.freq$Freq[j]==1) == TRUE
-        
-        tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]]
-        # open .asc
-        ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
-        #ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",tracksums.want$id[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
-        
-        # get number of track days (in decimal days)
-        track.days[[j]]<-tracksums.want$days[tracksums.want$deploy_id==track.freq$Var1[j]]
-        print(paste(j,track.freq$Freq[j],sum(ud.track[[j]])))
-      } else {
-        # operation for multiple segments in polygon (track.freq$Freq[j]>1) == TRUE
-        # get multiple segments
-        tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        
-        segs<-tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        bursts<-tracksums.want$burst[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        # list to house asc for each segment
-        ud.segs.new <- vector ("list", length(segs))
-        # k=3
-        for (k in 1:length(segs)) {
-          # open .asc
-          #if (k==1)
-          K<-as.character(bursts[k])
-          
-          idx<-which(names(bb)==K)
-          image(bb[[idx]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
-          ud.seg<-bb[[idx]]
-          ud.seg <- raster(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_contour_sum1_",K,".asc"), type = "numeric")
-          #ud.seg <- import.asc(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".asc"), type = "numeric")
-          
-          #if (k>1)
-          #  ud.seg <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",segs[k],".",k,".asc", sep = ""), type = "numeric")
-          #ud.seg <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".",k,".asc", sep = ""), type = "numeric")
-          
-          # weigh each segment it's proportion of total hours tracked within the clipperName (Freiberg 20XX paper)
-          ud.segs.new[[k]] <- ud.seg*(days.segs[k]/sum(days.segs))
-        }
-        # normalize divide by max cell value
-        ud.track[[j]]<-Reduce("+",ud.segs.new)
-        # get number of track days
-        track.days[[j]]<-sum(days.segs)
-        print(paste(j,k,sum(ud.track[[j]])))
-      }
-      
-    }
-    
-    ## sum by grouping variable weight by:
-    # a) number of days tracked 
-    print(paste("grouping variable = ", grping.var," ",grp.ids[grp.id],sep=""))
-    
-    # multiply new ud by (# of decimal days of each track/sum decimal days all tracks for that year)
-    # initialize rasters
-    ud.grp.id<-ud.track[[1]]*0  
-    noindiv.grp.id<-ud.track[[1]]*0
-    # run through all rasters to sum by grouping variable
-    for (l in 1:length(ud.track)) {
-      # calculate ud weighted by track.days, weigh each track it's proportion of total hours tracked within the clipperName (Freiberg 20XX paper)
-      ud.grp.id<-ud.grp.id + (ud.track[[l]])*(track.days[[l]]/sum(unlist(track.days)))
-      # calculate the number of individuals per cell (for weighting upon summing of all years)
-      indiv<-ud.track[[1]]*0
-      indiv[ud.track[[l]]>0] <-1
-      noindiv.grp.id<-noindiv.grp.id+indiv  
-    }
-    print(paste(grp.ids[grp.id],":",sum(ud.grp.id)))
-    
-    # save ud weighted by time spent per individual (days tracked)
-    ud.grp.ids[[grp.id]]<-ud.grp.id
-    
-    # save sum individuals per cell
-    noindiv.grp.ids[[grp.id]]<-noindiv.grp.id
-    
-    # export as .acs (ASCII = although Arc does not recognize header info), used to import into arc  
-    # create output directory, will not replace if already exists
-    dir.create(file.path(paste0(dir,species,"/"),"3_Compiled"),showWarnings=TRUE)
-    dir.create(file.path(paste0(dir,species,"/3_Compiled/"),clipperName),showWarnings=TRUE)
-    dir.create(file.path(paste0(dir,species,"/3_Compiled/",clipperName,"/"),resolution),showWarnings=TRUE)
-    
-    write.asc(noindiv.grp.ids[[grp.id]], paste(dir,species,"/3_Compiled/",clipperName,"/",resolution,"/",species,"_",grp.ids[grp.id],"_",resolution,"_ni", sep=""),gz=FALSE)
-    write.asc(ud.grp.ids[[grp.id]], paste(dir,species,"/3_Compiled/",clipperName,"/",resolution,"/",species,"_",grp.ids[grp.id],"_",resolution,"_bb", sep=""),gz=FALSE)
-    
-    
-  } 
-  
-  A<-list(ud.grp.ids,noindiv.grp.ids,summary.grp.ids,grp.ids)
-  return(A)
-}
-
-
-# # BBGroupby  - combines individual BBs into groups ------------------------
-# 
-# BBGroupby_noasc<-function(SegmentBB, #Output from IndividualBB
-#                     species,clipperName,
+# BBGroupby<-function(species,clipperName,
+#                     SegmentBB, #Output from IndividualBB
 #                     resolution="3km",
 #                     contour = 99.999,
 #                     id.out = c("99999"),# = c("68019a","68022a3") #to exclude birds or segments "99999" excludes none
@@ -1067,108 +935,118 @@ BBGroupby<-function(species,clipperName,
 #   require(adehabitatHR)
 #   require(SDMTools)
 #   
+#   #meta<-meta[meta$species==species,]
 #   #grp.meta<-data.matrix(meta[grping.var])
-#   bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums<-SegmentBB[[3]]
-#   tracksums$bbref<-1:nrow(tracksums)
+#   bb<- SegmentBB[[1]]; 
+#   bbvol<-SegmentBB[[2]]; 
+#   tracksums<-SegmentBB[[3]]
 #   
-#   burst<-names(bb)
 #   #### set grouping variable again
 #   if (grping.var=="year"){ tracksums$grp<-lubridate::year(tracksums$date.begin)}
-# 
-#   # get unique groups (use tracksums b/c these points are contained in polygon - not a tracks will necessarily be represented in a given polygon)
+#   #tracksums$grp <-tracksums[grping.var]
+#   #  tracksums$grp <-paste(tracksums$year, tracksums$site_abbrev, sep="_")
+#   
+#   # get unique groups (use tracksums b/c these points are contained in polygon - not all tracks will necessarily be represented in a given polygon)
 #   (grp.ids<-as.numeric(as.matrix(unique(tracksums$grp))))
 #   
 #   #### initialize lists to house data by desired grouping variable (group.uniq)
 #   # list to house uds normalized by track duration
-#   #ud.grp.ids <- vector ("list", length(grp.ids))
+#   ud.grp.ids <- vector ("list", length(grp.ids))
 #   # list to house raster of individuals/cell
-#   #noindiv.grp.ids <- vector ("list", length(grp.ids))
+#   noindiv.grp.ids <- vector ("list", length(grp.ids))
 #   # list to house summary data for each year
-#   #summary.grp.ids <- vector ("list", length(grp.ids))
+#   summary.grp.ids <- vector ("list", length(grp.ids))
 #   
 #   #### loop through groups
-#   for (k in 1:length(grp.ids)) {
-#     
-#     tracksums.want<-tracksums[which(tracksums$grp==grp.ids[k]),]
+#   #i <-1
+#   for (i in 1:length(grp.ids)) {
+#     grp.id<-grp.ids[i]
+#     tracksums.want<-tracksums%>%dplyr::filter(grp==grp.id)
+#     #tracksums.want<-tracksums[which(tracksums$grp==grp.ids[i]),]
 #     
 #     # create summary table of # of segments from each track
-#     (track.freq<-tracksums.want%>%group_by(deploy_id,grp)%>%
-#       summarize(n=n_distinct(burst),minbb=min(bbref),maxbb=max(bbref)))
+#     track.freq<-tracksums.want%>%dplyr::group_by(deploy_id)%>%dplyr::summarise(Freq=n())
+#     track.freq$track.grp<-cbind(rep(grp.ids[i],nrow(track.freq)))
+#     track.freq.old<-as.data.frame(table(tracksums.want$deploy_id))
 #     
-#         # initialize lists to house data for segment based on deploy_id
-#     ud.track <- vector ("list", nrow(track.freq))
-#     track.days <- vector ("list", nrow(track.freq))
+#     # initialize lists to house data for segment based on deploy_id
+#     ud.track <- vector ("list", length(track.freq$deploy_id))
+#     track.days <- vector ("list", length(track.freq$deploy_id))
+#     
+#     #track.grp<-cbind(rep(grp.ids[i],length(track.freq[,1])))
+#     summary.grp.ids[[i]]<-track.freq
 #     
 #     # sum up segments for each track
 #     # run through track.freq table summing segments >1
-#     for (j in 1:nrow(track.freq)) {
-#       if (track.freq$n[j]==1) {
-#         # operation for only one segment in polygon
-#         bbIndx<-track.freq$minbb[j]
-#         ud.track[[j]]<-bb[[bbIndx]]
+#     for (j in 1:length(track.freq$deploy_id)) {
+#       if (track.freq$Freq[j]==1) {
+#         # operation for only one segment in polygon (track.freq$Freq[j]==1) == TRUE
+#         
+#         tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]]
+#         # open .asc
+#         ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",tracksums.want$burst[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
+#         #ud.track[[j]] <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",tracksums.want$id[tracksums.want$deploy_id==track.freq$Var1[j]],".asc", sep = ""), type = "numeric")
 #         
 #         # get number of track days (in decimal days)
-#         track.days[[j]]<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-#         paste(paste("bird:",track.freq$deploy_id[j],
-#                     "segnum:",track.freq$n[j],
-#                     "area:",sum(slot(ud.track[[j]],"data")[,1])))
+#         track.days[[j]]<-tracksums.want$days[tracksums.want$deploy_id==track.freq$Var1[j]]
+#         print(paste(j,track.freq$Freq[j],sum(ud.track[[j]])))
 #       } else {
+#         # operation for multiple segments in polygon (track.freq$Freq[j]>1) == TRUE
 #         # get multiple segments
-#         days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-#         bbIndx.segs<-seq(from=track.freq$minbb[track.freq$deploy_id==track.freq$deploy_id[j]],
-#             to=track.freq$maxbb[track.freq$deploy_id==track.freq$deploy_id[j]])
+#         tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
 #         
-#         # list to house each segment
-#         ud.segs.new <- vector ("list", length(bbIndx.segs))
-# 
-#         for (k in 1:length(bbIndx.segs)) {
-#           bbIndx<-bbIndx.segs[k]
-#           ud.seg <- bb[[bbIndx]]
+#         segs<-tracksums.want$id[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+#         bursts<-tracksums.want$burst[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+#         days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+#         # list to house asc for each segment
+#         ud.segs.new <- vector ("list", length(segs))
+#         # k=3
+#         for (k in 1:length(segs)) {
+#           # open .asc
+#           #if (k==1)
+#           K<-as.character(bursts[k])
+#           
+#           idx<-which(names(bb)==K)
+#           image(bb[[idx]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
+#           ud.seg<-bb[[idx]]
+#           ud.seg <- raster(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_contour_sum1_",K,".asc"), type = "numeric")
+#           #ud.seg <- import.asc(paste0(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".asc"), type = "numeric")
+#           
+#           #if (k>1)
+#           #  ud.seg <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_sum1_",segs[k],".",k,".asc", sep = ""), type = "numeric")
+#           #ud.seg <- import.asc(paste(dir.in.asc,species,"_IndividualBB_",clipperName,"_",contour,"_",segs[k],".",k,".asc", sep = ""), type = "numeric")
+#           
 #           # weigh each segment it's proportion of total hours tracked within the clipperName (Freiberg 20XX paper)
-#           a<- slot(ud.seg,"data")*(days.segs[k]/sum(days.segs))
-#           slot(ud.seg,"data")<-a
-#           ud.segs.new[[k]] <- ud.seg
+#           ud.segs.new[[k]] <- ud.seg*(days.segs[k]/sum(days.segs)) #should sum to number of individual, if it doesn't this should be normalized
 #         }
 #         
+#         #segments / individual should = 1
+#         
 #         # normalize divide by max cell value
-#         ud.track[[j]]<-Reduce("+",ud.segs.new)
+#         # DON"T DO THIS!
+#         ####ud.track[[j]]<-Reduce("+",ud.segs.new) 
 #         # get number of track days
 #         track.days[[j]]<-sum(days.segs)
-#         print(paste(j,k,sum(slot(ud.track[[j]],"data"))))
+#         print(paste(j,k,sum(ud.track[[j]])))
 #       }
 #       
 #     }
-#   }
+#     #bb should sum to .99999, volumne is a 3D surface and should also sum to .99999
+#     #sum to cell values for all individuals
+#     
 #     ## sum by grouping variable weight by:
 #     # a) number of days tracked 
-#     #print(paste("grouping variable = ", grping.var," ",grp.ids[grp.id],sep=""))
+#     print(paste("grouping variable = ", grping.var," ",grp.ids[grp.id],sep=""))
 #     
 #     # multiply new ud by (# of decimal days of each track/sum decimal days all tracks for that year)
 #     # initialize rasters
-#     
-#     ud.grp.id<-ud.track[[1]] 
-#     slot(ud.grp.id,"data")<-data.frame(0)
-#     
-#     noindiv.grp.id<-ud.track[[1]]
-#     length(ud.track[[1]])
+#     ud.grp.id<-ud.track[[1]]*0  
+#     noindiv.grp.id<-ud.track[[1]]*0
 #     # run through all rasters to sum by grouping variable
+#     for (l in 1:length(ud.track)) {
 #       # calculate ud weighted by track.days, weigh each track it's proportion of 
 #       # total hours tracked within the clipperName (Freiberg 20XX paper)
-#     udspdf <- estUDm2spixdf(ud.track[[1]]) ## ud is an object of the class estUDm ## Convert it to SpatialPixelsDataFrame
-#     
-#     resu <- lapply(1:ncol(ud.track), function(i) {
-#       ud.track[[i]] * track.days[[i]] / sum(unlist(track.days))
-#     })
-#     slot(ud.grp.id,"data")<-(slot(ud.track[[l]],"data"))*(track.days[[l]]/sum(unlist(track.days)))
-#       # calculate the number of individuals per cell (for weighting upon summing of all years)
-#       indiv<-ud.track[[1]]*0
-#       indiv[ud.track[[l]]>0] <-1
-#       noindiv.grp.id[ud.track[[l]]>0] <-1
-#     }
-#     for (l in 2:length(ud.track)) {
-#       # calculate ud weighted by track.days, weigh each track it's proportion of 
-#       # total hours tracked within the clipperName (Freiberg 20XX paper)
-#       ud.grp.id<-ud.grp.id + (slot(ud.track[[l]],"data"))*(track.days[[l]]/sum(unlist(track.days)))
+#       ud.grp.id<-ud.grp.id + (ud.track[[l]])*(track.days[[l]]/sum(unlist(track.days)))
 #       # calculate the number of individuals per cell (for weighting upon summing of all years)
 #       indiv<-ud.track[[1]]*0
 #       indiv[ud.track[[l]]>0] <-1
@@ -1197,6 +1075,171 @@ BBGroupby<-function(species,clipperName,
 #   A<-list(ud.grp.ids,noindiv.grp.ids,summary.grp.ids,grp.ids)
 #   return(A)
 # }
+
+
+# # BBGroupby  - combines segmented BBs into individuals ------------------------
+#individuals also may be split across groups (year, season) if the tracks were segmented useing these 
+
+tracksums<-tracksums.out
+
+bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
+                          tracksums){
+  require(adehabitatHR)
+  require(SDMTools)
+
+  #grp.meta<-data.matrix(meta[grping.var])
+  bb<-bb_probabilitydensity
+  burst<-names(bb)
+  tracksums$bbref<-1:nrow(tracksums)
+  #### set grouping variable again
+
+
+  # get unique groups (use tracksums b/c these points are contained in polygon - not a tracks will necessarily be represented in a given polygon)
+  (grp.ids<-unique(tracksums$grp))
+
+  #### initialize lists to house data by desired grouping variable (group.uniq)
+  # list to house uds normalized by track duration
+  bbindis <- vector ("list", length(grp.ids))
+  # list to house raster of individuals/cell
+  #noindiv.grp.ids <- vector ("list", length(grp.ids))
+  # list to house summary data for each year
+  #summary.grp.ids <- vector ("list", length(grp.ids))
+
+  #### loop through groups
+  for (h in 1:length(grp.ids)) {
+    grp.id<-grp.ids[h]
+    #tracksums.want<-tracksums[which(tracksums$grp==grp.ids[k]),]
+    tracksums.want<-tracksums%>%dplyr::filter(grp==grp.id)
+    
+    # create summary table of # of segments from each track
+    (track.freq<-tracksums.want%>%group_by(deploy_id,grp)%>%
+      dplyr::summarize(n=n_distinct(burst),minbb=min(bbref),maxbb=max(bbref)))
+
+    # initialize lists to house data for segment based on deploy_id
+    ud.track <- vector("list", nrow(track.freq))
+    track.days <- vector ("list", nrow(track.freq))
+
+    # sum up segments for each track
+    # run through track.freq table summing segments >1
+    for (j in 1:nrow(track.freq)) {
+      if (track.freq$n[j]==1) {
+        # operation for only one segment in polygon
+        bbIndx<-track.freq$minbb[j]
+        ud.seg<-bb[[bbIndx]]
+        a<- slot(ud.seg,"data")#*10000000
+        slot(ud.seg,"data")<-a
+        ud.track[[j]]<-ud.seg
+
+        # get number of track days (in decimal days)
+        track.days[[j]]<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+        paste(paste("bird:",track.freq$deploy_id[j],
+                    "segnum:",track.freq$n[j],
+                    "area:",sum(slot(ud.track[[j]],"data")[,1])))
+      } else {
+        # get multiple segments
+        days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
+        bbIndx.segs<-seq(from=track.freq$minbb[track.freq$deploy_id==track.freq$deploy_id[j]],
+            to=track.freq$maxbb[track.freq$deploy_id==track.freq$deploy_id[j]])
+
+        # list to house each segment
+        ud.segs.new <- vector ("list", length(bbIndx.segs))
+        
+        for (k in 1:length(bbIndx.segs)) {
+          bbIndx<-bbIndx.segs[k]
+          ud.seg <- bb[[bbIndx]]
+          # weigh each segment it's proportion of total hours tracked within the clipperName (Freiberg 20XX paper)
+          a<- slot(ud.seg,"data")*(days.segs[k]/sum(days.segs))#*10000000
+          #slot(ud.seg,"data")<-a
+          ud.segs.new[[k]] <- a
+        }
+
+        # adds the segments from one bird together into one UD
+        spdf<-Reduce("+",ud.segs.new)
+        sum(spdf)
+        estUDsum<-ud.seg#steal UD formatting from 
+        slot(estUDsum,"data")<-spdf
+        
+        ud.track[[j]]<-estUDsum
+        # get number of track days
+        track.days[[j]]<-sum(days.segs)}
+        print(paste(j,k,sum(slot(ud.track[[j]],"data"))))
+      }
+
+    names(ud.track)<-track.freq$deploy_id
+    class(ud.track) <- "estUDm" 
+    bbindis[[h]]<-ud.track
+  }
+  names(bbindis)<-grp.ids
+  return(bbindis)
+}
+
+
+numofindis_ingridcell<-function(bbindis)
+
+
+
+
+
+
+
+  #   ## sum by grouping variable weight by:
+  #   # a) number of days tracked
+  #   #print(paste("grouping variable = ", grping.var," ",grp.ids[grp.id],sep=""))
+  # 
+  #   # multiply new ud by (# of decimal days of each track/sum decimal days all tracks for that year)
+  #   # initialize rasters
+  # 
+  #   ud.grp.id<-ud.track[[1]]
+  #   slot(ud.grp.id,"data")<-data.frame(0)
+  # 
+  #   noindiv.grp.id<-ud.track[[1]]
+  #   length(ud.track[[1]])
+  #   # run through all rasters to sum by grouping variable
+  #     # calculate ud weighted by track.days, weigh each track it's proportion of
+  #     # total hours tracked within the clipperName (Freiberg 20XX paper)
+  #   udspdf <- estUDm2spixdf(ud.track[[1]]) ## ud is an object of the class estUDm ## Convert it to SpatialPixelsDataFrame
+  # 
+  #   resu <- lapply(1:ncol(ud.track), function(i) {
+  #     ud.track[[i]] * track.days[[i]] / sum(unlist(track.days))
+  #   })
+  #   slot(ud.grp.id,"data")<-(slot(ud.track[[l]],"data"))*(track.days[[l]]/sum(unlist(track.days)))
+  #     # calculate the number of individuals per cell (for weighting upon summing of all years)
+  #     indiv<-ud.track[[1]]*0
+  #     indiv[ud.track[[l]]>0] <-1
+  #     noindiv.grp.id[ud.track[[l]]>0] <-1
+  #   }
+  #   for (l in 2:length(ud.track)) {
+  #     # calculate ud weighted by track.days, weigh each track it's proportion of
+  #     # total hours tracked within the clipperName (Freiberg 20XX paper)
+  #     ud.grp.id<-ud.grp.id + (slot(ud.track[[l]],"data"))*(track.days[[l]]/sum(unlist(track.days)))
+  #     # calculate the number of individuals per cell (for weighting upon summing of all years)
+  #     indiv<-ud.track[[1]]*0
+  #     indiv[ud.track[[l]]>0] <-1
+  #     noindiv.grp.id<-noindiv.grp.id+indiv
+  #   }
+  #   print(paste(grp.ids[grp.id],":",sum(ud.grp.id)))
+  # 
+  #   # save ud weighted by time spent per individual (days tracked)
+  #   ud.grp.ids[[grp.id]]<-ud.grp.id
+  # 
+  #   # save sum individuals per cell
+  #   noindiv.grp.ids[[grp.id]]<-noindiv.grp.id
+  # 
+  #   # export as .acs (ASCII = although Arc does not recognize header info), used to import into arc
+  #   # create output directory, will not replace if already exists
+  #   dir.create(file.path(paste0(dir,species,"/"),"3_Compiled"),showWarnings=TRUE)
+  #   dir.create(file.path(paste0(dir,species,"/3_Compiled/"),clipperName),showWarnings=TRUE)
+  #   dir.create(file.path(paste0(dir,species,"/3_Compiled/",clipperName,"/"),resolution),showWarnings=TRUE)
+  # 
+  #   write.asc(noindiv.grp.ids[[grp.id]], paste(dir,species,"/3_Compiled/",clipperName,"/",resolution,"/",species,"_",grp.ids[grp.id],"_",resolution,"_ni", sep=""),gz=FALSE)
+  #   write.asc(ud.grp.ids[[grp.id]], paste(dir,species,"/3_Compiled/",clipperName,"/",resolution,"/",species,"_",grp.ids[grp.id],"_",resolution,"_bb", sep=""),gz=FALSE)
+  # 
+  # 
+  # }
+  # 
+  # A<-list(ud.grp.ids,noindiv.grp.ids,summary.grp.ids,grp.ids)
+  # return(A)
+  # 
 
 
 

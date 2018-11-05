@@ -1,8 +1,6 @@
 library(adehabitatHR)
 library(SDMTools)
 library(raster)
-library(ggplot2)
-library(dplyr)
 library(stringr)
 
 
@@ -103,18 +101,25 @@ tag <- names (bb)
   dev.off()
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
-BBGroupby<-BBGroupby(species,
-                     clipperName,
-                     SegmentBB, 
-                     resolution="3km",
-                     contour = 99.999,
-                     id.out = c("99999"),
-                     dir=dir,
-                     #dir.in.asc=(paste(dir,"species/",species,"/2_BB_out/", sep="")), # directory containing BB.asc files
-                     grping.var="year")  #ignore directory errors if the directories already exist
+bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums<-SegmentBB[[3]]
+
+  #set grouping variable (year, season, month)
+  #needs to be the same used for segmentation if individuals span groups
+  
+  tracksums$grp<-lubridate::year(tracksums$date.begin)
+
+  bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
+                        tracksums)  #ignore directory errors if the directories already exist
+bbindis
+#bbindis is a list of estUDm for each grouping variable. Then each estUDm contains a list of estUDs 
+#for each individual weighted by the tracking time inside the polygon
 
 
-ud.grp.ids<-BBGroupby[[1]]; noindiv.grp.ids<-BBGroupby[[2]]; summary.grp.ids<-BBGroupby[[3]];grp.ids<-BBGroupby[[4]]
+
+
+
+
+
 
 
 
