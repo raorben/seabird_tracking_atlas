@@ -28,6 +28,7 @@ CLIPPERS<-PolygonPrep(rno=26,
                       cellsize=3000)
 
 clipperName<-CLIPPERS[[5]]
+rast<-CLIPPERS[[6]]
 saveRDS(object=CLIPPERS,file=paste0(dir,"polygons/",clipperName,".rda"))
 CLIPPERS<-readRDS(file=paste0(dir,"polygons/",clipperName,".rda"))
 

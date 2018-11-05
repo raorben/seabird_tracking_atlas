@@ -1174,10 +1174,109 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
 }
 
 
-numofindis_ingridcell<-function(bbindis)
+bbindis[[h]]
+
+countindinum_gridcell<-function(bbindis){
+  (grp.ids<-names(bbindis))
+  hab<-rast
+  fullgrid(hab)<-TRUE
+  hab@data[hab@data==0]<-1
+  
+  for (h in 1:length(grp.ids)) {
+    
+    estUDm<-bbindis[[h]]
+    for (j in 1:length(estUDm)){
+    
+
+      
+      
+    udspdf <- estUDm2spixdf(bbindis[[h]]) ## ud is an object of the class estUDm ## Convert it to SpatialPixelsDataFrame
+    fullgrid(udspdf) <- TRUE ## Convert the original map to fullgrid (i.e. SpatialGridDataFrame)
+    
+    #sum so all individuals equal one
+    resu <- lapply(1:ncol(udspdf), function(i) {
+      udspdf[[i]] * hab[[1]] / sum(udspdf[[i]] * hab[[1]])
+    })
+    sum(resu[[1]],resu[[2]])
+    resu <- as.data.frame(resu)
+    names(resu) <- names(udspdf@data)
+    names(resu)
+    head(resu)
+    resu[resu>0]<-1
+    numindi<-rowSums(resu)
+    #str(udspdf)
+    #head(udspdf@data)
+    udspdf@data[udspdf@data>0]<-1
+    numindi<-rowSums(udspdf@data)
+    }
+    re <- as.data.frame(numindi)
+    udspdf@data <- re
+    estUDm[[h]]<- udspdf@data
+    image(udspdf["numindi"],zlim = c(0,20),border = grey(1))
+    }
+}
+  
 
 
 
+bb_sumbygroup<-function(bbindis,tracksums.out){
+  (grp.ids<-names(bbindis))
+  
+  grp.estUDm<-vector("list", length(grp.ids))
+  for (h in 1:length(grp.ids)) {
+    
+    # multiply new ud by (# of decimal days of each track/sum decimal days all tracks for that group)
+    estUDm<-bbindis[[h]]
+
+    (track_info<-tracksums.out%>%
+      filter(grp==grp.ids[[h]])%>%
+      group_by(deploy_id,grp)%>%
+      dplyr::summarize(n=n_distinct(burst), days=sum(days)))
+    
+    (alldays<-sum(track_info$days))
+    
+    ## ud is an object of the class estUDm ## Convert it to SpatialPixelsDataFrame
+    udspdf <- estUDm2spixdf(estUDm)
+    ## Convert the original map to fullgrid (i.e. SpatialGridDataFrame)
+    fullgrid(udspdf) <- TRUE 
+
+    # run through all rasters to sum by grouping variable
+    #     # calculate ud weighted by track.days, weigh each track it's proportion of
+    #     # total hours tracked within the clipperName (Freiberg 20XX paper)
+    #ncol(udspdf) is specifying processing for each individual (1 column / individual)
+    densitys <- lapply(1:ncol(udspdf), function(i) {
+      udspdf[[i]] * track_info$days[[i]] / alldays
+           })
+    names(densitys)<-track_info$deploy_id #add ids back on - otherwise it looks crazy
+    
+    densitys <- as.data.frame(densitys)
+      head(densitys)
+      head(den_sum<-rowSums(densitys))
+      den_sum <- as.data.frame(den_sum)
+    udspdf@data <- den_sum
+    fullgrid(udspdf) <- FALSE
+    #image(udspdf["densitys"])
+    
+    #reclass as estUDm
+    re <- lapply(1:ncol(udspdf), function(i) {
+      so <- new("estUD", udspdf[,i])
+      so@h <- list(h=0, meth="specified")
+      so@vol <- FALSE
+      return(so)})
+    
+    names(re) <- names(udspdf)
+    class(re) <- "estUDm"
+    image(re)
+    ver <- getverticeshr(re, percent = 50, standardize = TRUE)
+    ver2 <- getverticeshr(re, percent = 95, standardize = TRUE)
+    plot(ver2)
+    
+    grp.estUDm[[h]]<-re
+  }
+  names(grp.estUDm)<-grp.ids
+  class(grp.estUDm) <- "estUDm" 
+  return(grp.estUDm)
+}
 
 
 
@@ -1257,12 +1356,12 @@ CCESTArasterplot<-function(clipperName,
   require(ggplot2)
   
   w2hr<-map_data('world')
-  w2hr_sub<-w2hr[w2hr$region%in%c("USA","Mexico","Canada","Alaska"),]
+  w2hr_sub<-w2hr[w2hr$region%in%c("USA","Mexico","Canada","Alaska","Russia","Japan"),]
   states<-map_data('state') 
-  states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
+  states_sub<-states[states$region%in%c("washington","oregon","california","alaska","hawaii"),]
   
   #convert the raster to points for plotting
-  allgrps.indiv.raster<-raster(paste0(dir,raster.in.dir,rastername))
+  allgrps.indiv.raster<-raster(re)
   cellStats(allgrps.indiv.raster,'sum')
   
   proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")

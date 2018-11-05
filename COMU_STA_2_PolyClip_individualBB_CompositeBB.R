@@ -94,33 +94,56 @@ bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]];contour
 tag <- names (bb)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
-  pdf(paste0(dir,"species/",species,"/",species,"_QCplots_",clipperName,"_segmentBB.pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",species,"/",species,"_QCplots_",clipperName,"_segmentBB.pdf"), onefile = TRUE)
   for (i in 1:length(tag)) {
     image(bb[[i]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
   }
-  dev.off()
+dev.off()
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
-bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums<-SegmentBB[[3]]
 
   #set grouping variable (year, season, month)
   #needs to be the same used for segmentation if individuals span groups
   
-  tracksums$grp<-lubridate::year(tracksums$date.begin)
+  tracksums.out$grp<-lubridate::year(tracksums.out$date.begin)
 
-  bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
-                        tracksums)  #ignore directory errors if the directories already exist
+bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
+                        tracksums.out)  #ignore directory errors if the directories already exist
 bbindis
 #bbindis is a list of estUDm for each grouping variable. Then each estUDm contains a list of estUDs 
 #for each individual weighted by the tracking time inside the polygon
 
+#sum individual densities by group weighted by the number of days for each individual / total days:
+names(bbindis) #check groups
+bbgroups<-bb_sumbygroup(bbindis,tracksums.out)
+
+a<-bbgroups[[1]]
+
+
+allgrps.indiv.raster<-raster(a$densitys)
+image(allgrps.indiv.raster)
+cellStats(allgrps.indiv.raster,'sum')
+
+proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
+allgrps.indiv.raster.wgs84<-projectRaster(allgrps.indiv.raster,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+map.p <- rasterToPoints(allgrps.indiv.raster.wgs84)
+
+CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda")) #list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
+clipper<-CLIPPERS[[1]]
+
+#Now make the map
+#Make the points a dataframe for ggplot
+df <- data.frame(map.p)
+head(df)
+colnames(df)<-c("Longitude","Latitude","Density")
+df[df$Density==0,]<-NA
 
 
 
 
-
-
-
+ggplot()+
+  geom_raster(data=fortify(a_ras), aes(fill=densitys))
 
 
 # make summary table for all years
@@ -161,35 +184,6 @@ sum(allgrps.dur.notracks.wght,na.rm=TRUE)
 image(allgrps.dur.notracks.wght)
 
 # Plot Rasters  ------------------------------------------------------------
-species="COMU"
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled/",clipperName,"/3km/"),
-                 rastername=paste0(species,"_3km_all_bb.asc"))
-
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled",clipperName,"/3km/"),
-                 rastername=paste0(species,"_2015_3km_bb.asc"))
-
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled/",clipperName,"/3km/"),
-                 rastername=paste0(species,"_2010_3km_bb.asc"))
-
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled/",clipperName,"/3km/"),
-                 rastername=paste0(species,"_2011_3km_bb.asc"))
-
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled/",clipperName,"/3km/"),
-                 rastername=paste0(species,"_2012_3km_bb.asc"))
-
-CCESTArasterplot(clipperName,dir,
-                 raster.in.dir=paste0("species/",species,"/3_Compiled/",clipperName,"/3km/"),
-                 rastername=paste0(species,"_2013_3km_bb.asc"))
-
-
-
-raster.in.dir=paste0(species,"/3_Compiled/",clipperName,"/3km/")
-rastername=paste0(species,"_3km_all_bb.asc")
 library(ggplot2)
 
 w2hr<-map_data('world')
@@ -223,11 +217,11 @@ df$Density.d[df$Density.n<=0.75 & df$Density.n>=0.50]<-75
 df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
 df$Density.d[df$Density.n<=0.25]<-25  
 
-ggplot(data=df, aes(y=Latitude, x=Longitude)) +
+ggplot(data=fortify(df), aes(y=Latitude, x=Longitude)) +
   geom_raster(aes(fill=Density.n)) +
   scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density.n") +
   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="gray",size=.2)+
+  geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
   theme_bw() +
   coord_equal() +
   coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
@@ -238,25 +232,7 @@ ggplot(data=df, aes(y=Latitude, x=Longitude)) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
-ggplot(data=df, aes(y=Latitude, x=Longitude)) +
-  geom_raster(data=df, aes(y=Latitude, x=Longitude,fill=as.factor(Density.d))) +
-  scale_fill_manual(values=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F"),name="Density.n") +
-  geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="gray",size=.2)+
-  theme_bw() +
-  coord_equal() +
-  coord_fixed(ratio=1.7,xlim = c((-130),(-160)),ylim=c(52.5,62))+
-  theme(axis.title.x = element_text(size=16),
-        axis.title.y = element_text(size=16, angle=90),
-        axis.text.x = element_text(size=12),
-        axis.text.y = element_text(size=12),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
 
-filename1 <- sapply(strsplit(rastername, split='.', fixed=TRUE), function(x) (x[1]))
-ggsave(paste0(dir,filename1,".png"))
-}
 
 
 
