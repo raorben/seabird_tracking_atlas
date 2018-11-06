@@ -20,7 +20,7 @@ clipperName<-as.character(clipPolyList$name[26])
 
 # Pulls in requested polygon  --------------------------------------------
 #and associated projection data, projects, calculates buff, return polygons
-CLIPPERS<-poly_prep(rno=26,
+CLIPPERS<-polygrid_prep(rno=26,
                       clipPolyList=clipPolyList, 
                       dir=dir,
                       plot="on",

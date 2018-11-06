@@ -362,7 +362,7 @@ tf_filt_error<-function(tracks,filt_sum,lcerrors,lcerrref="costa"){
 # (so you can read the file when you load it), but the buffer(km) was added as a specification
 # in the function for more flexiabilty
 
-poly_prep<-function(rno,
+polygrid_prep<-function(rno,
                       clipPolyList=clipPolyList, 
                       dir=dir,
                       plot="on",
@@ -430,6 +430,8 @@ poly_prep<-function(rno,
 }
 
 
+# Tracks in Poly / on Grid ------------------------------------------------
+
 clip_topoly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreitas_CCESTA
                              CLIPPERS=CLIPPERS,
                              dir.out=dir,
@@ -457,12 +459,12 @@ clip_topoly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
     track <- all_tracks[all_tracks$ptt_deploy_id==ptt_deploy_id,]
     year.id <- track$year[1]
     
-    print(c("track number",i,"of",length(ptt_deploy_ids)))
-    print(c("ptt_deploy_id",ptt_deploy_id))
+    #print(c("track number",i,"of",length(ptt_deploy_ids)))
+    #print(c("ptt_deploy_id",ptt_deploy_id))
     
     track.filts <- track[track$keeps==1,]
     TrackLength<-length(track.filts[,1])
-    print(c("TrackLength",TrackLength))
+    #print(c("TrackLength",TrackLength))
     
     #convert tracks into a spatial data frame & reproject
     track.filts.sp <- SpatialPointsDataFrame(coords = track.filts[c("lon1","lat1")], data = track.filts)
@@ -930,47 +932,36 @@ bb_plot<-function(clipperName,
   df <- data.frame(map.p)
   head(df)
   colnames(df)<-c("Longitude","Latitude","Density")
-  df[df$Density==0,]<-NA
   
-  #df$Density.n<-df$Density/max(df$Density,na.rm=TRUE)
-  df$Density.n<-sqrt(df$Density)
+  
+  df$Density.sqrt<-sqrt(df$Density)
+  df$Density.sqrt[df$Density<=0]<-NA
+  
+  #doesn't work
+  min(df$Density,na.rm=TRUE); max(df$Density,na.rm=TRUE)
   df$Density.d<-NA
   df$Density.d[df$Density.n>=0.75 & df$Density.n<=0.95]<-95
   df$Density.d[df$Density.n<=0.75 & df$Density.n>=0.50]<-75  
   df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
   df$Density.d[df$Density.n<=0.25]<-25  
   
-  ggplot(data=df, aes(y=Latitude, x=Longitude)) +
-    geom_raster(aes(fill=Density.n)) +
-    scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density.n") +
+  ggplot() +
+    geom_raster(data=df, aes(y=Latitude, x=Longitude,fill=Density.sqrt)) +
+    scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density") +
     geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
     geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
     geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="gray",size=.2)+
     theme_bw() +
     coord_equal() +
-    coord_fixed(ratio=1.7,xlim = c(lon1,lon2),ylim=c(lat1,lat2))+
+    coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
+    #coord_fixed(ratio=1.7,xlim = c(lon1,lon2),ylim=c(lat1,lat2))+
     theme(axis.title.x = element_text(size=16),
           axis.title.y = element_text(size=16, angle=90),
           axis.text.x = element_text(size=12),
           axis.text.y = element_text(size=12),
           panel.grid.major = element_blank(),
           panel.grid.minor = element_blank())
-  
-  # ggplot(data=df, aes(y=Latitude, x=Longitude)) +
-  #   geom_raster(data=df, aes(y=Latitude, x=Longitude,fill=as.factor(Density.d))) +
-  #   scale_fill_manual(values=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F"),name="Density.n") +
-  #   geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  #   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  #   geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="gray",size=.2)+
-  #   theme_bw() +
-  #   coord_equal() +
-  #   coord_fixed(ratio=1.7,xlim = c((-130),(-160)),ylim=c(52.5,62))+
-  #   theme(axis.title.x = element_text(size=16),
-  #         axis.title.y = element_text(size=16, angle=90),
-  #         axis.text.x = element_text(size=12),
-  #         axis.text.y = element_text(size=12),
-  #         panel.grid.major = element_blank(),
-  #         panel.grid.minor = element_blank())
+
   
   filename1 <- sapply(strsplit(rastername, split='.', fixed=TRUE), function(x) (x[1]))
   ggsave(paste0(dir,filename1,".png"))
@@ -981,4 +972,32 @@ wrap360 = function(lon) {
   lon360<-ifelse(lon<0,lon+360,lon)
   return(lon360)
 }
+
+
+# export to .asc ----------------------------------------------------------
+# Export Individual BB ASCII files for ArcMap: a couple of options
+#fix error if directory doesn't exist
+#changed with depretiation of adehabitat - > what outputs do we want?
+#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
+
+
+# ### export .shp with tracking data for all bird.ids (makes a folder)
+#tracks.filts.sp<-tracksclipped[[1]]
+#clipperName<-tracksclipped[[4]]
+#  writeOGR(obj=tracks.filts.sp,dsn=paste(dir,"species/",species,"/",species,'_all_pts_Freitas_in',clipperName, sep = ""),
+#           layer=paste(species,'all_pts_Freitas_in',clipperName, sep = ""),
+#           overwrite_layer='T', driver="ESRI Shapefile")
+
+# ## and find the contours
+# ver <- getverticeshr(re, percent = 50, standardize = TRUE)
+# ver2 <- getverticeshr(re, percent = 90, standardize = TRUE)
+# 
+# proj4string(ver) <- CRS(proj4string(mptyrs))
+# proj4string(ver2) <- CRS(proj4string(mptyrs))
+# 
+# ver50 <- spTransform(ver, CRS("+init=epsg:4326"))
+# ver90 <- spTransform(ver2, CRS("+init=epsg:4326"))
+# writePolyShape(ver50,file.path(output,"RHP_CHICK_50"))
+# writePolyShape(ver90,file.path(output,"RHP_CHICK_90"))
+
 

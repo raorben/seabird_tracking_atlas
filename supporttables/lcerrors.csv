@@ -1,0 +1,9 @@
+ArgosClasses,lc,68errCosta,68errDougMaxredun10,99errDougMaxredun10,ArgosError
+3,3,0.486,0.4,0.25,"<250m, >=4 messages"
+2,2,1.011,1,0.5,"250-500m, >=4 messages"
+1,1,1.201,2.5,1.5,"500m-1500, >=4 messages"
+0,0,4.182,6.8,28,">1500m, >=4 messages"
+A,-1,6.185,4.1,25,"no accuracy estimation, =3 messages"
+B,-2,10.279,7.6,33.6,"no accuracy estimation, =1 or 2 messages"
+Z,-9,0,4.7,33.5,invalid location
+G,99,0.01,0.01,0.01,GPS location

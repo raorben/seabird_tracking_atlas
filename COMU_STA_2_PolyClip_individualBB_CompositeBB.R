@@ -18,6 +18,7 @@ species<-"COMU"
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+
 source(paste0(gitdir,"STA_Functions.R"))
 
 # Read in Clipper ---------------------------------------------------------
@@ -40,7 +41,7 @@ meta<-meta[meta$species==species,]
 # reads in Frietas filtered tracking data for species
 # get speed value used in argosfilter::sdafilter
 load(file=paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
-speed<-tf_info$vmax[1]
+(speed<-unique(tf_info$vmax))
 
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
@@ -54,8 +55,8 @@ tracks_filt_clip_spatialdf<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]]
 
 # Adds a time component to identify and label segments -------------------------------
 tracks_filt_clip_seg<-calc_leavetimesegs(hrs=72, tracks=tracks_filt_clip, clipperName)
-
-Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(tracks_filt_clip_seg)))
+head(tracks_filt_clip_seg)
+(Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(tracks_filt_clip_seg))))
 unique(tracks_filt_clip_seg[,Idx]) #how many segments?
 
 
@@ -90,7 +91,8 @@ segments<-bb_segmentation(ptt=tracks_filt_clip_seg, #tracking data
 
 saveRDS(segments,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
 segments<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
-bb<-segments[[1]]; bbvol<-segments[[2]]; tracksums.out<-SegmentBB[[3]];contour=SegmentBB[[4]]
+
+bb<-segments[[1]]; bbvol<-segments[[2]]; tracksums.out<-segments[[3]];contour=segments[[4]]
 tag <- names(bb)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
@@ -105,7 +107,7 @@ dev.off()
   #set grouping variable (year, season, month)
   #needs to be the same used for segmentation if individuals span groups
   
-  tracksums.out$grp<-lubridate::year(tracksums.out$date.begin)
+tracksums.out$grp<-lubridate::year(tracksums.out$date.begin)
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
                         tracksums.out)  #ignore directory errors if the directories already exist
@@ -117,71 +119,7 @@ bbindis
 names(bbindis) #check groups
 bbgroups<-bb_sumbygroup(bbindis,tracksums.out)
 
-a<-bbgroups[[1]]
 
-
-allgrps.indiv.raster<-raster(a$densitys)
-image(allgrps.indiv.raster)
-cellStats(allgrps.indiv.raster,'sum')
-
-proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
-allgrps.indiv.raster.wgs84<-projectRaster(allgrps.indiv.raster,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-
-map.p <- rasterToPoints(allgrps.indiv.raster.wgs84)
-
-CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda")) #list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
-clipper<-CLIPPERS[[1]]
-
-#Now make the map
-#Make the points a dataframe for ggplot
-df <- data.frame(map.p)
-head(df)
-colnames(df)<-c("Longitude","Latitude","Density")
-df[df$Density==0,]<-NA
-
-
-
-
-ggplot()+
-  geom_raster(data=fortify(a_ras), aes(fill=densitys))
-
-
-# make summary table for all years
-summary.grp.ids.mat<-do.call(rbind, summary.grp.ids)
-grp.id.wants<-as.data.frame(table(summary.grp.ids.mat[,1]))
-
-# initiate loop to sum all years to create raster for 
-# 1. all years weighted by (number of individuals tracked for that year/total number individuals tracks for all years)
-# 2. number of birds per cell for all years
-
-# grp.id <-1
-for (grp.id in 1:length(grp.ids)) {
-  # allyrs.dur.notracks.wght=ud.years[[yr]] * (# individuals tracked for year i/sum # individuals tracked for all years)
-  if (exists("allgrps.dur.notracks.wght")) {
-    allgrps.dur.notracks.wght<-allgrps.dur.notracks.wght + (ud.grp.ids[[grp.id]]*(grp.id.wants[grp.id,2]/sum(grp.id.wants[,2])))
-    allgrps.indiv<-allgrps.indiv + noindiv.grp.ids[[grp.id]]  
-  } else {
-    allgrps.dur.notracks.wght<-(ud.grp.ids[[grp.id]]*(grp.id.wants[grp.id,2]/sum(grp.id.wants[,2])))
-    allgrps.indiv<-noindiv.grp.ids[[grp.id]] 
-  } 
-}
-
-# examine distribution of contours
-hist(log(allgrps.dur.notracks.wght),100)
-hist((allgrps.dur.notracks.wght),1000)
-hist(log(allgrps.indiv),100)
-hist((allgrps.indiv),1000)
-
-# export summary table
-write.table(as.data.frame(summary.grp.ids.mat), paste(dir,species,"/3_BB_out/",species,"_",clipperName,"_",resolution,"_",min(grp.ids),"_",max(grp.ids),"_tracksummary.csv", sep=""), sep=",", quote=FALSE,col.names=TRUE, row.names=FALSE,na="")
-
-# export files for all tracks weighted by no ind tracked/year
-# export as .acs (ASCII = although Arc does not recognize header info), used to import into arc
-write.asc(allgrps.indiv, paste(dir,species,"/5_Compiled/",clipperName,"/",resolution,"/",species,"_",resolution,"_all_ni", sep=""),gz=FALSE)
-write.asc(allgrps.dur.notracks.wght, paste(dir,species,"/5_Compiled/",clipperName,"/",resolution,"/",species,"_",resolution,"_all_bb", sep=""),gz=FALSE)
-sum(allgrps.dur.notracks.wght,na.rm=TRUE)
-
-image(allgrps.dur.notracks.wght)
 
 # Plot Rasters  ------------------------------------------------------------
 library(ggplot2)
@@ -192,9 +130,11 @@ states<-map_data('state')
 states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
 
 #convert the raster to points for plotting
-allgrps.indiv.raster<-raster(paste0(dir,raster.in.dir,rastername))
+a<-bbgroups[[2]]
+allgrps.indiv.raster<-raster(a$den_sum)
+#allgrps.indiv.raster<-raster(paste0(dir,raster.in.dir,rastername))
 cellStats(allgrps.indiv.raster,'sum')
-
+proj4string(allgrps.indiv.raster)
 proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
 allgrps.indiv.raster.wgs84<-projectRaster(allgrps.indiv.raster,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
 
@@ -202,6 +142,12 @@ map.p <- rasterToPoints(allgrps.indiv.raster.wgs84)
 
 CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda")) #list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
 clipper<-CLIPPERS[[1]]
+(prj<-CLIPPERS[[4]])
+proj4string(clipper)<-CRS(proj4string(allgrps.indiv.raster.wgs84))
+
+
+buffer<-clipper[[3]]
+#buffer_ft<-fortify(buffer)
 
 #Now make the map
 #Make the points a dataframe for ggplot
@@ -210,14 +156,16 @@ head(df)
 colnames(df)<-c("Longitude","Latitude","Density")
 df[df$Density==0,]<-NA
 
-df$Density.n<-sqrt(df$Density)
-df$Density.d<-NA
-df$Density.d[df$Density.n>=0.75 & df$Density.n<=0.95]<-95
-df$Density.d[df$Density.n<=0.75 & df$Density.n>=0.50]<-75  
-df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
-df$Density.d[df$Density.n<=0.25]<-25  
+df$Density.n<-df$Density.n/min(df$Density.n,na.rm=TRUE)
+df$Density.n<-sqrt(df$Density)#*10000
+hist(df$Density.n)
+#df$Density.d<-NA
+#df$Density.d[df$Density.n>=0.75 & df$Density.n<=0.95]<-95
+#df$Density.d[df$Density.n<=0.75 & df$Density.n>=0.50]<-75  
+#df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
+#df$Density.d[df$Density.n<=0.25]<-25  
 
-ggplot(data=fortify(df), aes(y=Latitude, x=Longitude)) +
+ggplot(data=fortify(df)%>%dplyr::filter(Density.n), aes(y=Latitude, x=Longitude)) +
   geom_raster(aes(fill=Density.n)) +
   scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density.n") +
   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
@@ -232,21 +180,21 @@ ggplot(data=fortify(df), aes(y=Latitude, x=Longitude)) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
+B<-ggplot(data=fortify(df), aes(y=Latitude, x=Longitude)) +
+  geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
+  geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
+  geom_path(data=tracks_filt%>%
+              filter(year==2013)%>%
+              filter(keeps==1),
+            aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
+  theme_bw() +
+  coord_equal() +
+  coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
+  theme(axis.title.x = element_text(size=16),
+        axis.title.y = element_text(size=16, angle=90),
+        axis.text.x = element_text(size=12),
+        axis.text.y = element_text(size=12),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 
-
-
-
-### Export Individual BB ASCII files for ArcMap -----------------------------------------
-#fix error if directory doesn't exist
-#changed with depretiation of adehabitat - > what outputs do we want?
-#ExportASCII_SegmentBB(SegmentBB, species, clipperName,cellsize=cellsize3km, dir)
-
-
-# ### export .shp with tracking data for all bird.ids (makes a folder)
-#tracks.filts.sp<-tracksclipped[[1]]
-#clipperName<-tracksclipped[[4]]
-#  writeOGR(obj=tracks.filts.sp,dsn=paste(dir,"species/",species,"/",species,'_all_pts_Freitas_in',clipperName, sep = ""),
-#           layer=paste(species,'all_pts_Freitas_in',clipperName, sep = ""),
-#           overwrite_layer='T', driver="ESRI Shapefile")
-
-
+gridExtra::grid.arrange(A,B,ncol=2)
