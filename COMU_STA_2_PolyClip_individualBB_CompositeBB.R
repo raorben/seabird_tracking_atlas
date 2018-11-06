@@ -3,7 +3,6 @@ library(SDMTools)
 library(raster)
 library(stringr)
 
-
 library(dplyr)
 library(sp)
 library(ggplot2) #tracksclipped
@@ -129,25 +128,31 @@ w2hr_sub<-w2hr[w2hr$region%in%c("USA","Mexico","Canada","Alaska"),]
 states<-map_data('state') 
 states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
 
-#convert the raster to points for plotting
-a<-bbgroups[[2]]
-allgrps.indiv.raster<-raster(a$den_sum)
-#allgrps.indiv.raster<-raster(paste0(dir,raster.in.dir,rastername))
-cellStats(allgrps.indiv.raster,'sum')
-proj4string(allgrps.indiv.raster)
-proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
-allgrps.indiv.raster.wgs84<-projectRaster(allgrps.indiv.raster,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
-
-map.p <- rasterToPoints(allgrps.indiv.raster.wgs84)
-
 CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda")) #list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
 clipper<-CLIPPERS[[1]]
 (prj<-CLIPPERS[[4]])
-proj4string(clipper)<-CRS(proj4string(allgrps.indiv.raster.wgs84))
+clipper_proj<-spTransform(clipper, CRS(prj))
 
 
-buffer<-clipper[[3]]
-#buffer_ft<-fortify(buffer)
+#convert the raster to points for plotting
+a<-bbgroups[[2]]
+allgrps.indiv.raster<-raster(a$den_sum)
+## crop and mask
+proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +towgs84=0,0,0")
+proj4string(allgrps.indiv.raster)
+proj4string(clipper_proj)
+
+cellStats(allgrps.indiv.raster,'sum')
+r2 <- crop(allgrps.indiv.raster, extent(clipper_proj))
+allgrps.indiv.raster.clip <- raster::mask(r2, clipper_proj)
+
+## Check that it worked
+plot(allgrps.indiv.raster.clip)
+plot(clipper_proj, add=TRUE, lwd=2)
+
+allgrps.indiv.raster.clip.wgs84<-projectRaster(allgrps.indiv.raster.clip,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+map.p <- rasterToPoints(allgrps.indiv.raster.clip.wgs84)
 
 #Now make the map
 #Make the points a dataframe for ggplot
@@ -156,7 +161,6 @@ head(df)
 colnames(df)<-c("Longitude","Latitude","Density")
 df[df$Density==0,]<-NA
 
-df$Density.n<-df$Density.n/min(df$Density.n,na.rm=TRUE)
 df$Density.n<-sqrt(df$Density)#*10000
 hist(df$Density.n)
 #df$Density.d<-NA
@@ -165,7 +169,7 @@ hist(df$Density.n)
 #df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
 #df$Density.d[df$Density.n<=0.25]<-25  
 
-ggplot(data=fortify(df)%>%dplyr::filter(Density.n), aes(y=Latitude, x=Longitude)) +
+A<-ggplot(data=fortify(df)%>%dplyr::filter(Density.n>0.000000001), aes(y=Latitude, x=Longitude)) +
   geom_raster(aes(fill=Density.n)) +
   scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density.n") +
   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+

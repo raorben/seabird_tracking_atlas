@@ -26,8 +26,9 @@ source(paste0(gitdir,"STA_Functions.R"))
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
 meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "",stringsAsFactors = FALSE)
-parameters <- read.csv (paste0(dir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
-lcerrors <- read.csv(paste0(dir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+
+parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 
 meta%>%dplyr::filter(species=="COMU")%>%
   group_by(year,deploy_site,collab1_point_contact_name)%>%

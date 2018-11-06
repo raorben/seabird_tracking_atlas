@@ -1,0 +1,19 @@
+spp,tag,gps_vmax,vmaxSA_Tab2_W5ms_x_3SD,significant,wind_basis,source,ang1,ang2,distlim1,distlim2,colrad,type,error_ptt,error_GPS,minDepAdj.min,minRecAdj.min,noLocsSpeed,timeStLim.min,timeEndLim.min,minTripDur.hr,radCol.km
+BFAL,ptt,30,14.72973124,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+BRBO,gps,30,23.13714828,n.s.,5,spear_ainley1997,15,25,250,1000,1000,gps,3000,8,10,10,3,30,30,0.5,1.5
+COMU,ptt,35,24.28652209,<.002,5,spear_ainley1997,15,25,250,500,200,sat,3000,8,,,,,,,
+HAPE,ptt,40,19.44,n.s.,10,adams_inprep,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+LAAL,ptt,30,14.72973124,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+NESH,ptt,35,17.343,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+PFSH,ptt,30,14.48303235,n.s.,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+RFBO,gps,40,23.13714828,n.s.,5,spear_ainley1997,15,25,250,1000,1000,gps,3000,8,10,10,3,30,30,0.5,1.5
+RTTR,gps,30,18.24279945,n.s.,5,spear_ainley1997,15,25,250,1000,1500,gps,3000,8,10,10,3,30,30,0.5,1.5
+SOSH,ptt,35,16.92422986,n.s.,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,,,,,,,
+WTSH,gps,30,14.48303235,n.s.,5,spear_ainley1997,15,25,250,500,500,gps,3000,8,10,10,3,120,360,7,1
+ZACA,ptt,4,2,,,Wrigth et al 2010,15,25,2500,5000,NA,sat,3000,8,,,,,,,
+PFSH,gps,30,14.48303235,n.s.,5,spear_ainley1997,15,25,2500,5000,2500,gps,3000,8,10,10,3,120,360,7,2.5
+BFAL,eobs,40,14.72973124,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,10,10,3,120,360,7,5
+LAAL,eobs,40,14.72973124,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,sat,3000,8,10,10,3,120,360,7,5
+SUSC,ptt,30,30,,,The Common Eider,25,40,2500,5000,NA,sat,3000,8,,,,,,,
+RTLO,ptt,30,25,,,"Roph Davis, SORA 1970",25,40,2500,5000,NA,sat,3000,8,,,,,,,
+STAL,gps,40,40,<.0001,5,spear_ainley1997,15,25,2500,5000,1000,gps,3000,8,10,10,3,120,360,7,5
