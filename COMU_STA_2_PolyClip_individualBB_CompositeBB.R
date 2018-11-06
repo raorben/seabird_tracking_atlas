@@ -45,7 +45,7 @@ speed<-tf_info$vmax[1]
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
 ## adds a 1 or 0 for in or out of polygon, or buffer
-tracksclipped<-PolygonClip(all_tracks=tracks_filt,
+tracksclipped<-clip_topoly(all_tracks=tracks_filt,
                                   CLIPPERS=clipper,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
@@ -53,7 +53,7 @@ tracksclipped<-PolygonClip(all_tracks=tracks_filt,
 tracks_filt_clip_spatialdf<-tracksclipped[[1]];Clipper.Plots<-tracksclipped[[2]];tracks_filt_clip<-tracksclipped[[3]]
 
 # Adds a time component to identify and label segments -------------------------------
-tracks_filt_clip_seg<-segmentleavetime(hrs=72, tracks=tracks_filt_clip, clipperName)
+tracks_filt_clip_seg<-calc_leavetimesegs(hrs=72, tracks=tracks_filt_clip, clipperName)
 
 Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(tracks_filt_clip_seg)))
 unique(tracks_filt_clip_seg[,Idx]) #how many segments?
@@ -75,7 +75,7 @@ tracks_filt_clip_seg$time.grp.var<-tracks_filt_clip_seg$year
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
 
-SegmentBB<-segmentBB(ptt=tracks_filt_clip_seg, #tracking data
+segments<-bb_segmentation(ptt=tracks_filt_clip_seg, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper, #output from: PolygonPrep_CCESTA with desired polygon
                             speed,
@@ -88,10 +88,10 @@ SegmentBB<-segmentBB(ptt=tracks_filt_clip_seg, #tracking data
                             tagtype="ptt",
                             meta=meta) #metadata from PTT_metadata_all.csv for the species
 
-saveRDS(SegmentBB,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
-SegmentBB<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
-bb<-SegmentBB[[1]]; bbvol<-SegmentBB[[2]]; tracksums.out<-SegmentBB[[3]];contour=SegmentBB[[4]]
-tag <- names (bb)
+saveRDS(segments,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
+segments<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_segmentBB.rda"))
+bb<-segments[[1]]; bbvol<-segments[[2]]; tracksums.out<-SegmentBB[[3]];contour=SegmentBB[[4]]
+tag <- names(bb)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
 pdf(paste0(dir,"species/",species,"/",species,"_QCplots_",clipperName,"_segmentBB.pdf"), onefile = TRUE)
