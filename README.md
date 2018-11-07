@@ -2,7 +2,7 @@
 
 # *****************************
 ## FUNCTIONS for the California Current Telemetry Atlas
-## Original Codes written by Bill Henrey 
+## Original Codes written by Bill Henry 
 ## Adapted into functions & scripts by Rachael Orben 
 # *****************************
 
