@@ -290,6 +290,7 @@ trackfilter<-function(species,
   
   Tracks$uid<-1:length(Tracks[,1])
   ouput<-list(Tracks,Track.Plots,INFO)
+  names(ouput)<-c("tracks_filt","tf_plots","tf_info")
   return(ouput)
 }
 
@@ -312,7 +313,6 @@ tf_filt_sum<-function(tracks){
   
   # cast the data (make the pivot)
   filter.results<-dcast(tracks.m, ptt_deploy_id + lc ~ keeps + value , sum)
-  
   return(filter.results)}
 
 
@@ -426,6 +426,7 @@ polygrid_prep<-function(rno,
   #plot(ext, col="green",add=T)
   
   CLIPPERS<-list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName,rast)
+  names(CLIPPERS)<-c("clipper","clipper_proj","clipperbuff_proj","projWant","clipperName","rast")
   return(CLIPPERS)
 }
 
@@ -441,12 +442,12 @@ clip_topoly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
   require(ggplot2)
   
   #Extraction of CLIPPER List from PolygonPrep_CCESTA
-  clipper<-CLIPPERS[[1]]
-  clipper_proj<-CLIPPERS[[2]]
-  clipperBuff_proj<-CLIPPERS[[3]]
-  projWant<-CLIPPERS[[4]]
-  clipperName<-CLIPPERS[[5]]
-  rast<-CLIPPERS[[6]]
+  clipper<-CLIPPERS$clipper
+  clipper_proj<-CLIPPERS$clipper_proj
+  clipperBuff_proj<-CLIPPERS$clipperbuff_proj
+  projWant<-CLIPPERS$projWant
+  clipperName<-CLIPPERS$clipperName
+  rast<-CLIPPERS$rast
   
   all_tracks$utc<-as.POSIXct(format(strptime(as.character(all_tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
   
@@ -532,6 +533,7 @@ clip_topoly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAF
   }
   
   tracksclipped<-list(track.filts.sp,Clipper.Plots,tracks.out,clipperName)
+  names(tracksclipped)<-c("tracks_filt_clip_spatialdf","Clipper.Plots","tracks.out","clipperName")
   return(tracksclipped)
 }
 
@@ -591,11 +593,11 @@ bb_segmentation<-function(ptt, #tracking data
   require(SDMTools)
   require(adehabitatHR)
   
-  projWant<-CLIPPERS[[4]]
-  clipperNamecheck<-CLIPPERS[[5]]
+  projWant<-CLIPPERS$projWant
+  clipperNamecheck<-CLIPPERS$clipperName
   if (clipperName != clipperNamecheck){print("Clippers don't match, try again")}
 
-  rast<-CLIPPERS[[6]]
+  rast<-CLIPPERS$rast
   
   #### Do you want: all tracking data, or segments in poly?  
   #### TO DO ALL MORE DATA/CODE SCRUBING NEEDED
@@ -692,21 +694,22 @@ bb_segmentation<-function(ptt, #tracking data
   
   # CALCULATE UDBB WITH YOUR SPECIFIED SPEED AND SMOOTHING TERMS 
   bb <- kernelbb(track, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  ## speed in m/s use same for each species and MATCH what you'be done for SDA, 
-  #image(bb)
-  #plot(getverticeshr(bb, 95), add=TRUE, lwd=2)
+
   #this possibly done b/c BB has prefilter based on speed, we've already done speed distance and angle
   bbvol = getvolumeUD (bb)
   ## Create a list of raster maps containing ud if the pixel is inside the 100% home range and 0 otherwise
   ## NOTE: ud estimates have been scaled by multiplying each value by 9000^2 to make prob vol that sums to 1.00 accross pixel space
   
-  ouput<-list(bb,bbvol,tracksums.out,contour,projW,track)
-  return(ouput)
+  output<-list(bb,bbvol,tracksums.out,contour,projW,track)
+  names(output)<-c("bb","bbvol","tracksums.out","contour","projW","track")
+  return(output)
 }
 
 
 
 bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
-                          tracksums=tracksums.out){
+                          tracksums=tracksums.out,
+                         cellsize=3000){
   #individuals also may be split across groups (year, season) if the tracks were segmented useing these 
   
   require(adehabitatHR)
@@ -746,7 +749,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
         bbIndx<-track.freq$minbb[j]
         ud.seg<-bb[[bbIndx]]
         a<- slot(ud.seg,"data")
-        slot(ud.seg,"data")<-a
+        slot(ud.seg,"data")<-a*(cellsize^2)
         ud.track[[j]]<-ud.seg
 
         # get number of track days (in decimal days)
@@ -773,7 +776,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
         }
 
         # adds the segments from one bird together into one UD
-        spdf<-Reduce("+",ud.segs.new)
+        spdf<-Reduce("+",ud.segs.new)*(cellsize^2)
         sum(spdf)
         estUDsum<-ud.seg#steal UD formatting from 
         slot(estUDsum,"data")<-spdf

@@ -13,7 +13,7 @@ rm(list=ls())
 species="COMU"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
@@ -45,13 +45,13 @@ tf_out<-trackfilter(species=species,
                           parameters=parameters,
                           meta=meta,
                           lcerrors=lcerrors)
-tracks_filt<-tf_out[[1]]
-tf_plots<-tf_out[[2]] #list of ggplots showing prefiltered and filtered locations  
-tf_info<-tf_out[[3]]
+tracks_filt<-tf_out$tracks_filt
+tf_plots<-tf_out$tf_plot #list of ggplots showing prefiltered and filtered locations  
+tf_info<-tf_out$tf_info
 
 
 # Makes Quality Control plots for Freitas Filter --------------------------
-pdf(paste0(dir,"species/",species,"/",species,"_trackfilter_QC_plots.pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",species,"/QCplots_",species,"_trackfilter.pdf"), onefile = TRUE)
 for(i in 1:length(tf_plots)){
   top.plot <-tf_plots[[i]]
   grid.arrange(top.plot)

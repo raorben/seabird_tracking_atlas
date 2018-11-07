@@ -27,8 +27,8 @@ CLIPPERS<-polygrid_prep(rno=26,
                       bufferkm=33.6,
                       cellsize=3000)
 
-clipperName<-CLIPPERS[[5]]
-rast<-CLIPPERS[[6]]
+clipperName<-CLIPPERS$clipperName
+rast<-CLIPPERS$rast
 saveRDS(object=CLIPPERS,file=paste0(dir,"polygons/",clipperName,".rda"))
 CLIPPERS<-readRDS(file=paste0(dir,"polygons/",clipperName,".rda"))
 
