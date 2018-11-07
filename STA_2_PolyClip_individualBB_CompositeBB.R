@@ -1,14 +1,19 @@
+#spatial stuff
 library(adehabitatHR)
 library(SDMTools)
 library(raster)
-library(stringr)
-
-library(dplyr)
 library(sp)
-library(ggplot2) #tracksclipped
+
+#data manipulation
+library(stringr)
+library(dplyr)
 library(trip) #segmentleavetime
+
+#plotting
+library(ggplot2) #tracksclipped
 library(gridExtra)#for pdfs
-rm(list=ls())
+
+rm(list=ls()) #empty environment
 
 
 species<-"COMU"
@@ -25,7 +30,7 @@ clipperName<-"PACSEA_convhull_All_coastclip"
 
 # read in list of all potential clipper files
 # polys are stored as WGS84 and then projected in MakeClippers.R
-# this reads in the polygon info and the processed Clipper. 
+# this reads in the polygon info, the processed Clipper and plots it.
 
 polyinfo<-read.csv (paste(gitdir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
 print(polyinfo%>%filter(name==clipperName)) # shows clipper info. 
@@ -45,14 +50,14 @@ load(file=paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
 ## adds a 1 or 0 for in or out of polygon, or buffer
-tracksclipped<-clip_topoly(all_tracks=tracks_filt,
+tracks_inpoly<-in_poly(all_tracks=tracks_filt,
                                   CLIPPERS=clipper_list,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
 
-tracks_filt_clip_spatialdf<-tracksclipped$tracks_filt_clip_spatialdf
-clipper.plots<-tracksclipped$Clipper.Plots
-tracks_filt_clip<-tracksclipped$tracks.out
+tracks_filt_clip_spatialdf<-tracks_inpoly$tracks_filt_clip_spatialdf
+clipper.plots<-tracks_inpoly$Clipper.Plots
+tracks_filt_clip<-tracks_inpoly$tracks.out
 
 # Adds a time component to identify and label segments -------------------------------
 tracks_filt_clip_seg<-calc_leavetimesegs(hrs=72, tracks=tracks_filt_clip, clipperName)
@@ -141,6 +146,7 @@ sta_quickplot(bbgroups,
               dir,
               species)
 
+#keeping this in the script for easy editing 
 sta_quickplot<-function(bbgroups,
                         clipper_list=clipper_list,
                         dir,

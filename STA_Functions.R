@@ -433,7 +433,7 @@ polygrid_prep<-function(rno,
 
 # Tracks in Poly / on Grid ------------------------------------------------
 
-clip_topoly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreitas_CCESTA
+in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreitas_CCESTA
                              CLIPPERS=CLIPPERS,
                              dir.out=dir,
                              prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84"){ #default projection: the WGS84 projection that Argos Data is delivered in
