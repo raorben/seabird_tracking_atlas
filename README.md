@@ -28,3 +28,7 @@ EEZtoPoly.R
   
 STA_Functions.R
   Where all the actual work happens. 
+
+##
+/supporttables  
+  a couple of .csv or excel files with metadata for track filtering - these need some cleaning. 
