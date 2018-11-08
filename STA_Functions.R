@@ -451,22 +451,18 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
   
   all_tracks$utc<-as.POSIXct(format(strptime(as.character(all_tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
   
-  ptt_deploy_ids<-unique(all_tracks$ptt_deploy_id)
-  Clipper.Plots<-vector("list",length(ptt_deploy_ids))
+  ids<-unique(all_tracks$uniID)
+  Clipper.Plots<-vector("list",length(ids))
   tracks.out<-data.frame()
   
-  for (i in 1:length(ptt_deploy_ids)) {
-    ptt_deploy_id <- ptt_deploy_ids[i]
-    track <- all_tracks[all_tracks$ptt_deploy_id==ptt_deploy_id,]
-    year.id <- track$year[1]
+  for (i in 1:length(ids)) {
+    id <- ids[i]
+    track <- all_tracks[all_tracks$uniID==id,]
+    #year.id <- track$year[1]
     
-    #print(c("track number",i,"of",length(ptt_deploy_ids)))
-    #print(c("ptt_deploy_id",ptt_deploy_id))
-    
-    track.filts <- track[track$keeps==1,]
-    TrackLength<-length(track.filts[,1])
-    #print(c("TrackLength",TrackLength))
-    
+    track.filts <- track%>%dplyr::filter(keeps==1)
+    TrackLength<-nrow(track.filts)
+   
     #convert tracks into a spatial data frame & reproject
     track.filts.sp <- SpatialPointsDataFrame(coords = track.filts[c("lon1","lat1")], data = track.filts)
     
@@ -495,7 +491,7 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
     track.filts.sp$in_polyBuffer <- track_in.polyBuffer
     
     # replace col names require(stringr), note will replace all string in header(s) with clipperName!!
-    names(track.filts.sp@data) <- str_replace(string=names(track.filts.sp@data), pattern="in_poly", replacement=as.character(clipperName))
+    #names(track.filts.sp@data) <- str_replace(string=names(track.filts.sp@data), pattern="in_poly", replacement=as.character(clipperName))
     
     #### Add the spatially joined in.out points to the PROJECTED spatial data frame (for plot in aea proj.)
     track.filts.sp_proj$in_poly <- track_in.poly
@@ -509,7 +505,7 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
       geom_point(data=as.data.frame(coordinates(track.filts.sp_proj))[track_in.polyBuffer==0,],aes(x=lon1,y=lat1),color='#FFB90F',pch=16, cex=1.3)+
       geom_point(data=as.data.frame(coordinates(track.filts.sp_proj))[track_in.poly==1,],aes(x=lon1,y=lat1),color='#0000FF',pch=16, cex=.5)+
       geom_point(data=as.data.frame(coordinates(track.filts.sp_proj))[track_in.poly==0,],aes(x=lon1,y=lat1),color='#FF3030',pch=16, cex=.5)+
-      geom_text(data=as.data.frame(coordinates(track.filts.sp_proj)),aes(x=max(lon1),y=max(lat1)),label=as.character(ptt_deploy_id))+
+      geom_text(data=as.data.frame(coordinates(track.filts.sp_proj)),aes(x=max(lon1),y=max(lat1)),label=as.character(id))+
       xlab("Longitude")+
       ylab("Latitude")+
       theme_classic()
@@ -517,7 +513,7 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
     head(track.filts.sp_proj)
     
     # replace col names require(stringr)
-    names(track.filts.sp_proj@data) <- str_replace(string=names(track.filts.sp_proj@data), pattern="in_poly", replacement=as.character(clipperName))
+    #names(track.filts.sp_proj@data) <- str_replace(string=names(track.filts.sp_proj@data), pattern="in_poly", replacement=as.character(clipperName))
     
     #### concatenate each track into spatial dataframe (shapefile)
     if (i==1) {
@@ -539,34 +535,56 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
 
 
 calc_leavetimesegs<-function(hrs=8,#### set hrs for minimum gap in second (converted to sec with time gap used create new segment each time animal leaves and returns in to box)
-                                         tracks,
-                                         clipperName){
+                             tracks,
+                             clipperName){
   require(trip)
-  #### hrs: NOTE THIS VALUE FOR EACH SPECIES/CLIPPER COMBO THAT YOU RUN - Data retained for Bridge are sensitive to this value and it is not recorded ELSEWHERE
+  require(dplyr)
+  minGap<-3600 * hrs
+  
   # create row index
   ridx<-seq(from = 1, to = nrow(tracks), by = 1)
   tracks<-cbind(ridx, tracks)  
-  minGap<-3600 * hrs
-  tracks$utc<-as.POSIXct(format(strptime(as.character(tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
+
+  tracks.want<-tracks%>%dplyr::filter(in_polyBuffer==1)
   
-  tracks.want<-subset(tracks,(tracks[,clipperName])==1)
+  tracks.want$id3<-trip::sepIdGaps(tracks.want$uniID, tracks.want$utc, minGap=minGap)
   
-  tracks.want[,paste(clipperName,"_id3",sep="")]<-sepIdGaps(tracks.want$ptt_deploy_id, tracks.want$utc, minGap=minGap)
-  
-  tracks[,paste(clipperName,"_id3",sep="")]<-tracks[,clipperName]
+  tracks$id3<-tracks$in_poly
   
   fixes <- match(tracks$ridx,tracks.want$ridx,nomatch=0)
-  tracks[,paste(clipperName,"_id3",sep="")][fixes!=0] <- tracks.want[,paste(clipperName,"_id3",sep="")][fixes]
+  tracks$id3[fixes!=0] <- tracks.want$id3[fixes]
   
-  #### create decimal number for deploy ids with more than one entry/exit of polygon
-  #### WARNING! this makes 1_1 =1_10, 1_2 = 1_20 etc., original codes, but switch to use character _id3 instead
-  tracks[,paste(clipperName,"_id2",sep="")]<-as.numeric(sub("_", ".", tracks[,paste(clipperName,"_id3",sep="")]))
+  tracks$seg_id<-tracks$id3
+  
+  #finds segments that are only in the Buffer
+  #tracks%>%group_by(seg_id)%>%
+  #  summarise(n_inpoly=sum(in_poly))%>%
+  #  dplyr::filter(n_inpoly==0)
+  
+  #remove variables used for this function
+  tracks<-tracks%>%dplyr::select(-id3,ridx)
+  
+  #tracks<-tracks%>%filter(seg_id!=0)
   return(tracks)
 }
 
 # Brownian Bridges ---------------------------------------------------------
 
-bb_segmentation<-function(ptt, #tracking data
+
+ptt=tracks_seg_df #tracking data
+clipperName #e.g. "PACSEA_buff33_coastclip", must match what you have used.
+CLIPPERS=clipper_list #output from: PolygonPrep_CCESTA with desired polygon
+speed
+id.out = c("99999") # to manually exclude birds or segments "99999" excludes none
+contour=99.999 # the maximum contour to return, use 99.999 for 100 ud contours
+sig2=cellsize#
+cellsize=cellsize# related to error tags, in m
+minNo=2#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
+id.2="seg"##all=bird.id (run entire ptt) or "seg"=clip.name_id2 (run segments of track that are in box then sum them based on number of days tracked)
+tagtype="ptt"
+meta=meta
+
+bb_segmentation<-function(tracks, #tracking data
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
                            speed,
@@ -601,67 +619,67 @@ bb_segmentation<-function(ptt, #tracking data
   
   #### Do you want: all tracking data, or segments in poly?  
   #### TO DO ALL MORE DATA/CODE SCRUBING NEEDED
-  if (id.2=="all") {
-    # get frequncies from the ptt deploy_id's
-    pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id))
-    print("All IDs and number of loctions"); print(pttIDFreq)
-    # select tracks > min #
-    pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-    # subset orginal ptt to those w/ > minNo obs
-    ptt <- ptt[ptt$ptt_deploy_id %in% pttIDFreq$Var1,]
-    #### tally number of relocations
-    pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
-  
-  if (id.2=="all_time") {
-    # get frequncies from the ptt deploy_id's
-    ptt$ptt_deploy_id_time<-paste0(ptt$ptt_deploy_id,"_",ptt$time.grp.var)
-    pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
-    print("All IDs and number of loctions"); print(pttIDFreq)
-    # select tracks > min #
-    pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-    # subset orginal ptt to those w/ > minNo obs
-    ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
-    #### tally number of relocations
-    pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
-  
+  # if (id.2=="all") {
+  #   # get frequncies from the ptt deploy_id's
+  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id))
+  #   print("All IDs and number of loctions"); print(pttIDFreq)
+  #   # select tracks > min #
+  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
+  #   # subset orginal ptt to those w/ > minNo obs
+  #   ptt <- ptt[ptt$ptt_deploy_id %in% pttIDFreq$Var1,]
+  #   #### tally number of relocations
+  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
+  # 
+  # if (id.2=="all_time") {
+  #   # get frequncies from the ptt deploy_id's
+  #   ptt$ptt_deploy_id_time<-paste0(ptt$ptt_deploy_id,"_",ptt$time.grp.var)
+  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
+  #   print("All IDs and number of loctions"); print(pttIDFreq)
+  #   # select tracks > min #
+  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
+  #   # subset orginal ptt to those w/ > minNo obs
+  #   ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
+  #   #### tally number of relocations
+  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
+  # 
   if (id.2=="seg") {
     # get frequncies from the segments - paste(clipperName,'_id2',sep='')
-    pttIDFreq<-as.data.frame(table(ptt[,paste(clipperName,'_id2',sep='')]))
-    print("All Segment IDs and number of loctions"); print(pttIDFreq)
+    pttIDFreq<-as.data.frame(table(tracks[,paste(clipperName,'_id2',sep='')]))
+    #print("All Segment IDs and number of loctions"); print(pttIDFreq)
     # select segments > min #
     pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
     pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-    # subset orginal ptt to those Buffer_id1 w/ > minNo obs
-    ptt <- ptt[ptt[,paste(clipperName,'_id2',sep='')] %in% pttIDFreq$Var1,]
+    # subset orginal tracks to those Buffer_id1 w/ > minNo obs
+    tracks <- tracks[tracks[,paste(clipperName,'_id2',sep='')] %in% pttIDFreq$Var1,]
     #### tally number of relocations
-    pttIDFreq.out<-as.data.frame(table(floor(ptt[,paste(clipperName,'_id2',sep='')])))
+    pttIDFreq.out<-as.data.frame(table(floor(tracks[,paste(clipperName,'_id2',sep='')])))
     pttIDFreq.out<-pttIDFreq.out[(pttIDFreq.out$Var1)!=0 & pttIDFreq.out$Freq>minNo,]
-    print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
+    #print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
   
-  if (id.2=="seg_time") {
-    Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(ptt)))
-    ptt <- ptt[ptt[,Idx]!=0,]
-    clipid<-paste(clipperName,'_id2',sep='')
-    ptt$ptt_deploy_id_time<-paste0(ptt[,paste(clipperName,'_id2',sep='')],"_",ptt$time.grp.var)
-    # get frequncies from the segments - paste(clipperName,'_id2',sep='')
-    pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
-    print("All Segment IDs and number of loctions"); print(pttIDFreq)
-    # select segments > min #
-    pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-    # subset orginal ptt to those Buffer_id1 w/ > minNo obs
-    ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
-    #### tally number of relocations
-    pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
+  # if (id.2=="seg_time") {
+  #   Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(ptt)))
+  #   ptt <- ptt[ptt[,Idx]!=0,]
+  #   clipid<-paste(clipperName,'_id2',sep='')
+  #   ptt$ptt_deploy_id_time<-paste0(ptt[,paste(clipperName,'_id2',sep='')],"_",ptt$time.grp.var)
+  #   # get frequncies from the segments - paste(clipperName,'_id2',sep='')
+  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
+  #   print("All Segment IDs and number of loctions"); print(pttIDFreq)
+  #   # select segments > min #
+  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
+  #   # subset orginal ptt to those Buffer_id1 w/ > minNo obs
+  #   ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
+  #   #### tally number of relocations
+  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
+  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
   
   #### convert ptt data to spatial, points are brought in WGS84
-  tracks.sp <- SpatialPointsDataFrame(coords = ptt[c("lon1","lat1")], data = data.frame(utc = ptt$utc))
-  
+  tracks.sp <- SpatialPointsDataFrame(coords = tracks[c("lon1","lat1")], data = data.frame(utc = tracks$utc))
+
   # define projection, use the WGS84 projection that Argos Data is delivered in
   if (tagtype=="ptt")
   {tracks.sp@proj4string <- CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")}
@@ -671,17 +689,27 @@ bb_segmentation<-function(ptt, #tracking data
   projW<-CRS(projWant)
   
   # select relevant data for kernel density analysis
-  date_time <- as.POSIXct(strptime (tracks.sp_proj@data$utc, "%Y-%m-%d %H:%M:%S"), "GMT")
-  loc       <- tracks.sp_proj@coords    # projected coords
+  tracks$date_time <- as.POSIXct(strptime (tracks.sp_proj@data$utc, "%Y-%m-%d %H:%M:%S"), "GMT")
   
-  if (id.2=="all") {burst<- ptt$ptt_deploy_id} #all birds
-  if (id.2=="all_time") {burst<- ptt$ptt_deploy_id_time} #all birds, grouped by time variable
-  if (id.2=="seg") {burst<- ptt[,paste0(clipperName,'_id2')]} #birds within a polygon
-  if (id.2=="seg_time") {burst<- ptt$ptt_deploy_id_time} #birds within a polygon grouped by a time variable
-  ptt_deploy_id<-ptt$ptt_deploy_id
+  coords       <- tracks.sp_proj@coords    # projected coords
+  colnames(coords)<-c("x_proj","y_proj")
+  tracks<-cbind(tracks,coords)
   
+  #if (id.2=="all") {burst<- ptt$ptt_deploy_id} #all birds
+  #if (id.2=="all_time") {burst<- ptt$ptt_deploy_id_time} #all birds, grouped by time variable
+  if (id.2=="seg") {tracks$burst<- tracks[,paste0(clipperName,'_id2')]} #birds within a polygon
+  #if (id.2=="seg_time") {burst<- ptt$ptt_deploy_id_time} #birds within a polygon grouped by a time variable
+  ptt_deploy_id<-tracks$ptt_deploy_id
+  colnames(tracks)
   # CREATE TRACKS USING YOUR TIME AND LOCATION DATA FOR KERNELBB ANALYSIS
-  track <- as.ltraj(loc, date_time, id=ptt_deploy_id, burst = burst, typeII = TRUE)
+  #catchall to remove duplicate datetimes within ptt_deploy_id
+  tracks1 <-  tracks %>% distinct(ptt_deploy_id,date_time,.keep_all = T) %>%
+                  arrange(ptt_deploy_id,date_time)
+  track.ltj <- as.ltraj(xy = cbind(tracks1$x_proj,tracks1$y_proj), 
+                    date = tracks1$date_time, 
+                    id = tracks1$ptt_deploy_id, 
+                    burst = tracks1$burst, 
+                    typeII = TRUE)
   
   track.all<-summary(track)
   track.all$id<-as.numeric(as.vector.factor(track.all$id))
@@ -693,7 +721,7 @@ bb_segmentation<-function(ptt, #tracking data
   tracksums.out<- merge(tracksums.out, meta, by.x = "deploy_id", by.y = "ptt_deploy_id" )  
   
   # CALCULATE UDBB WITH YOUR SPECIFIED SPEED AND SMOOTHING TERMS 
-  bb <- kernelbb(track, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  ## speed in m/s use same for each species and MATCH what you'be done for SDA, 
+  bb <- kernelbb(track.ltj, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  ## speed in m/s use same for each species and MATCH what you'be done for SDA, 
 
   #this possibly done b/c BB has prefilter based on speed, we've already done speed distance and angle
   bbvol = getvolumeUD (bb)

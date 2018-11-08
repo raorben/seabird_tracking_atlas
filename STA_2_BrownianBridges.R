@@ -8,6 +8,7 @@ library(sp)
 library(stringr)
 library(dplyr)
 library(trip) #segmentleavetime
+library(lubridate)
 
 #plotting
 library(ggplot2) #tracksclipped
@@ -46,6 +47,13 @@ meta<-meta[meta$species==species,]
 # get speed value used in argosfilter::sdafilter
 load(file=paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
 (speed<-unique(tf_info$vmax))
+remove(tf_info); remove(filt_sum); remove(filt_error)
+
+## #########################################################################
+# Unique ID for dataset and grouping
+unique(paste0(tracks_filt$ptt_deploy_id,"_",year(tracks_filt$utc)))
+tracks_filt$uniID<-paste0(tracks_filt$ptt_deploy_id,"_",year(tracks_filt$utc))
+length(unique(tracks_filt$uniID))
 
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
@@ -54,17 +62,7 @@ tracks_inpoly<-in_poly(all_tracks=tracks_filt,
                                   CLIPPERS=clipper_list,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
-
-tracks_filt_clip_spatialdf<-tracks_inpoly$tracks_filt_clip_spatialdf
 clipper.plots<-tracks_inpoly$Clipper.Plots
-tracks_filt_clip<-tracks_inpoly$tracks.out
-
-# Adds a time component to identify and label segments -------------------------------
-tracks_filt_clip_seg<-calc_leavetimesegs(hrs=72, tracks=tracks_filt_clip, clipperName)
-head(tracks_filt_clip_seg)
-(Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(tracks_filt_clip_seg))))
-unique(tracks_filt_clip_seg[,Idx]) #how many segments?
-
 
 # Makes Quality Control plots for PolygonClip --------------------------
 pdf(paste0(dir,"species/",species,"/QCplots_",species,"_",clipperName,".pdf"), onefile = TRUE)
@@ -75,14 +73,20 @@ for(i in 1:length(clipper.plots)){
 dev.off()
 
 
+# Adds a time component to identify and label segments -------------------------------
+tracks_inpoly_df<-tracks_inpoly$tracks.out
 
-tracks_filt_clip_seg$time.grp.var<-tracks_filt_clip_seg$year
+tracks_seg_df<-calc_leavetimesegs(hrs=72, tracks=tracks_inpoly_df, clipperName)
+unique(tracks_seg_df$seg_id) #how many segments?
+length(unique(tracks_seg_df$seg_id))
+
+tracks_seg_df$time.grp.var<-tracks_seg_df$year
 
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
 
-segments<-bb_segmentation(ptt=tracks_filt_clip_seg, #tracking data
+segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
                             speed,
