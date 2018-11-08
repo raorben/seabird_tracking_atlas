@@ -26,6 +26,10 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 
 source(paste0(gitdir,"STA_Functions.R"))
 
+# A time grouping variable needs to be decided on and modifed for this script to work. 
+# Right now only one nesting of this variable is allowed so if you want a summary of all tracks
+# give a time variable of "all"
+
 # Read in Clipper ---------------------------------------------------------
 clipperName<-"PACSEA_convhull_All_coastclip"
 
@@ -117,12 +121,14 @@ dev.off()
 #needs to be the same used for segmentation if individuals span groups
   
 tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
+tracksums.out$timegrp<-"all"
+
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
                         tracksums=tracksums.out,
                         cellsize=3000)  #the UD is multiplied by the cellsize^2 to make the individual ud = 1
 
-saveRDS(bbindis,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_2_individuals.rda"))
+saveRDS(bbindis,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_2_individuals_all.rda"))
 bbindis<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_2_individuals.rda"))
 
 #ignore directory errors if the directories already exist
