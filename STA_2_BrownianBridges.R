@@ -113,13 +113,13 @@ dev.off()
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
 
-  #set grouping variable (year, season, month)
-  #needs to be the same used for segmentation if individuals span groups
+#set time grouping variable (year, season, month)
+#needs to be the same used for segmentation if individuals span groups
   
-tracksums.out$grp<-lubridate::year(tracksums.out$date.begin)
+tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
-                        tracksums.out,
+                        tracksums=tracksums.out,
                         cellsize=3000)  #the UD is multiplied by the cellsize^2 to make the individual ud = 1
 
 saveRDS(bbindis,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_2_individuals.rda"))
@@ -133,7 +133,8 @@ bbindis
 #sum individual densities by group weighted by the number of days for each individual / total days:
 names(bbindis) #check groups
 
-bbgroups<-bb_sumbygroup(bbindis,tracksums.out)
+bbgroups<-bb_sumbygroup(bbindis,
+                        tracksums.out)
 
 saveRDS(bbgroups,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_3_groups.rda"))
 bbgroups<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_3_groups.rda"))

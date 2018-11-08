@@ -565,20 +565,6 @@ calc_leavetimesegs<-function(hrs=8,#### set hrs for minimum gap in second (conve
 
 # Brownian Bridges ---------------------------------------------------------
 
-
-ptt=tracks_seg_df #tracking data
-clipperName #e.g. "PACSEA_buff33_coastclip", must match what you have used.
-CLIPPERS=clipper_list #output from: PolygonPrep_CCESTA with desired polygon
-speed
-id.out = c("99999") # to manually exclude birds or segments "99999" excludes none
-contour=99.999 # the maximum contour to return, use 99.999 for 100 ud contours
-sig2=cellsize#
-cellsize=cellsize# related to error tags, in m
-minNo=2#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
-id.2="seg"##all=bird.id (run entire ptt) or "seg"=clip.name_id2 (run segments of track that are in box then sum them based on number of days tracked)
-tagtype="ptt"
-meta=meta
-
 bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:time and a segment id
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
@@ -649,7 +635,7 @@ bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:
   
   #summarize time tracked
   tracksums.out<-tracks1%>%
-    group_by(seg_id)%>%
+    group_by(uniID,seg_id)%>%
     summarise(date.end=max(date_time),date.begin=min(date_time))%>%
     mutate(days=as.numeric(difftime(date.end,date.begin,units = c("days"))))
     
@@ -668,12 +654,12 @@ bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:
 
 
 bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
-                          tracksums=tracksums.out,
+                         tracksums=tracksums.out,
                          cellsize=3000){
   ## NOTE: ud estimates have been scaled by multiplying each value by cellsize^2 to make prob vol that sums to 1.00 accross pixel space
   #individuals also may be split across groups (year, season) if the tracks were segmented useing these 
   
-  require(adehabitatHR)
+  require(adehabitatHR) 
   require(SDMTools)
 
   #grp.meta<-data.matrix(meta[grping.var])
@@ -682,7 +668,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
   tracksums$bbref<-1:nrow(tracksums)
 
   # get unique groups (use tracksums b/c these points are contained in polygon - not a tracks will necessarily be represented in a given polygon)
-  (grp.ids<-unique(tracksums$grp))
+  (grp.ids<-unique(tracksums$timegrp))
 
   #### initialize lists to house data by desired grouping variable (group.uniq)
   # list to house uds normalized by track duration
@@ -692,11 +678,11 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
   for (h in 1:length(grp.ids)) {
     grp.id<-grp.ids[h]
     #tracksums.want<-tracksums[which(tracksums$grp==grp.ids[k]),]
-    tracksums.want<-tracksums%>%dplyr::filter(grp==grp.id)
+    tracksums.want<-tracksums%>%dplyr::filter(timegrp==grp.id)
     
     # create summary table of # of segments from each track
-    (track.freq<-tracksums.want%>%group_by(deploy_id,grp)%>%
-      dplyr::summarize(n=n_distinct(burst),minbb=min(bbref),maxbb=max(bbref)))
+    (track.freq<-tracksums.want%>%group_by(uniID)%>%
+      dplyr::summarize(n=n_distinct(seg_id),minbb=min(bbref),maxbb=max(bbref)))
 
     # initialize lists to house data for segment based on deploy_id
     ud.track <- vector("list", nrow(track.freq))
@@ -714,15 +700,15 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
         ud.track[[j]]<-ud.seg
 
         # get number of track days (in decimal days)
-        track.days[[j]]<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        paste(paste("bird:",track.freq$deploy_id[j],
+        track.days[[j]]<-tracksums.want$days[tracksums.want$uniID==track.freq$uniID[j]]
+        paste(paste("bird:",track.freq$uniID[j],
                     "segnum:",track.freq$n[j],
                     "area:",sum(slot(ud.track[[j]],"data")[,1])))
       } else {
         # get multiple segments
-        days.segs<-tracksums.want$days[tracksums.want$deploy_id==track.freq$deploy_id[j]]
-        bbIndx.segs<-seq(from=track.freq$minbb[track.freq$deploy_id==track.freq$deploy_id[j]],
-            to=track.freq$maxbb[track.freq$deploy_id==track.freq$deploy_id[j]])
+        days.segs<-tracksums.want$days[tracksums.want$uniID==track.freq$uniID[j]]
+        bbIndx.segs<-seq(from=track.freq$minbb[track.freq$uniID==track.freq$uniID[j]],
+            to=track.freq$maxbb[track.freq$uniID==track.freq$uniID[j]])
 
         # list to house each segment
         ud.segs.new <- vector ("list", length(bbIndx.segs))
@@ -748,7 +734,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
         print(paste(j,k,sum(slot(ud.track[[j]],"data"))))
       }
 
-    names(ud.track)<-track.freq$deploy_id
+    names(ud.track)<-track.freq$uniID
     class(ud.track) <- "estUDm" 
     bbindis[[h]]<-ud.track
   }
@@ -759,11 +745,13 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
 
 
 
-bb_countindinum_gridcell<-function(bbindis){
+bb_countindinum_gridcell<-function(bbindis,
+                                   clipper_list=clipper_list){
   (grp.ids<-names(bbindis))
-  hab<-rast
-  fullgrid(hab)<-TRUE
-  hab@data[hab@data==0]<-1
+    
+    hab<-clipper_list$rast
+    fullgrid(hab)<-TRUE
+    hab@data[hab@data==0]<-1
   
   for (h in 1:length(grp.ids)) {
     
@@ -799,7 +787,8 @@ bb_countindinum_gridcell<-function(bbindis){
 
 
 
-bb_sumbygroup<-function(bbindis,tracksums.out){
+bb_sumbygroup<-function(bbindis,
+                        tracksums.out){
   (grp.ids<-names(bbindis))
   
   grp.estUDm<-vector("list", length(grp.ids))
@@ -809,9 +798,9 @@ bb_sumbygroup<-function(bbindis,tracksums.out){
     estUDm<-bbindis[[h]]
 
     (track_info<-tracksums.out%>%
-      filter(grp==grp.ids[[h]])%>%
-      group_by(deploy_id,grp)%>%
-      dplyr::summarize(n=n_distinct(burst), days=sum(days)))
+      filter(timegrp==grp.ids[[h]])%>%
+      group_by(uniID)%>%
+      dplyr::summarize(n=n_distinct(seg_id), days=sum(days)))
     
     (alldays<-sum(track_info$days))
     
@@ -827,7 +816,7 @@ bb_sumbygroup<-function(bbindis,tracksums.out){
     densitys <- lapply(1:ncol(udspdf), function(i) {
       udspdf[[i]] * track_info$days[[i]] / alldays
            })
-    names(densitys)<-track_info$deploy_id #add ids back on - otherwise it looks crazy
+    names(densitys)<-track_info$uniID #add ids back on - otherwise it looks crazy
     
     densitys <- as.data.frame(densitys)
       head(densitys)
@@ -847,10 +836,7 @@ bb_sumbygroup<-function(bbindis,tracksums.out){
     names(re) <- names(udspdf)
     class(re) <- "estUDm"
     image(re)
-    ver <- getverticeshr(re, percent = 50, standardize = TRUE)
-    ver2 <- getverticeshr(re, percent = 95, standardize = TRUE)
-    plot(ver2)
-    
+
     grp.estUDm[[h]]<-re
   }
   names(grp.estUDm)<-grp.ids
