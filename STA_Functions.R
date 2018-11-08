@@ -556,15 +556,10 @@ calc_leavetimesegs<-function(hrs=8,#### set hrs for minimum gap in second (conve
   
   tracks$seg_id<-tracks$id3
   
-  #finds segments that are only in the Buffer
-  #tracks%>%group_by(seg_id)%>%
-  #  summarise(n_inpoly=sum(in_poly))%>%
-  #  dplyr::filter(n_inpoly==0)
-  
   #remove variables used for this function
   tracks<-tracks%>%dplyr::select(-id3,ridx)
   
-  #tracks<-tracks%>%filter(seg_id!=0)
+  tracks<-tracks%>%filter(seg_id!=0)
   return(tracks)
 }
 
@@ -584,22 +579,16 @@ id.2="seg"##all=bird.id (run entire ptt) or "seg"=clip.name_id2 (run segments of
 tagtype="ptt"
 meta=meta
 
-bb_segmentation<-function(tracks, #tracking data
+bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:time and a segment id
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                            CLIPPERS, #output from: PolygonPrep_CCESTA with desired polygon
                            speed,
-                           id.out = "99999", # to manually exclude birds or segments "99999" excludes none
-                           contour=99.999, # the maximum contour to return, use 99.999 for 100 ud contours
+                           id.out = c("99999"), # to manually exclude birds or segments "99999" excludes none
                            sig2=3000,#, the second smoothing parameter was 3000 m (the approximate mean error for PTT locations)
                            cellsize=3000,#(user option)
                            minNo=2,#minimum number of point to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
-                           id.2= "seg",
-                           #all=bird.id, 
-                           #all_time=bird.id_timevar, 
-                           #seg=clip.name_id2 (run segments of track that are in box then sum them based on number of days tracked)
-                           #seg_time = tracks in segment by time grouping var (e.g. month, season), all_time = all tracks, but by a time grouping var (e.g. month, season)
-                           tagtype="ptt", #Used to define projection of tracking data
-                           meta=meta){ #metadata from PTT_metadata_all.csv for the species
+                           proj4tracks="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" #Used to define projection of tracking data
+                           ){
   
   require(sp)
   require(maptools)
@@ -617,118 +606,61 @@ bb_segmentation<-function(tracks, #tracking data
 
   rast<-CLIPPERS$rast
   
-  #### Do you want: all tracking data, or segments in poly?  
-  #### TO DO ALL MORE DATA/CODE SCRUBING NEEDED
-  # if (id.2=="all") {
-  #   # get frequncies from the ptt deploy_id's
-  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id))
-  #   print("All IDs and number of loctions"); print(pttIDFreq)
-  #   # select tracks > min #
-  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-  #   # subset orginal ptt to those w/ > minNo obs
-  #   ptt <- ptt[ptt$ptt_deploy_id %in% pttIDFreq$Var1,]
-  #   #### tally number of relocations
-  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
-  # 
-  # if (id.2=="all_time") {
-  #   # get frequncies from the ptt deploy_id's
-  #   ptt$ptt_deploy_id_time<-paste0(ptt$ptt_deploy_id,"_",ptt$time.grp.var)
-  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
-  #   print("All IDs and number of loctions"); print(pttIDFreq)
-  #   # select tracks > min #
-  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-  #   # subset orginal ptt to those w/ > minNo obs
-  #   ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
-  #   #### tally number of relocations
-  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)} 
-  # 
-  if (id.2=="seg") {
-    # get frequncies from the segments - paste(clipperName,'_id2',sep='')
-    pttIDFreq<-as.data.frame(table(tracks[,paste(clipperName,'_id2',sep='')]))
-    #print("All Segment IDs and number of loctions"); print(pttIDFreq)
+    # get frequncies from the segments 
+    segIDFreq<-as.data.frame(table(tracks$seg_id))
+    
     # select segments > min #
-    pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-    pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
+    # removed segment named 0 <- this is points outside buffers
+    segIDFreq<-segIDFreq[(segIDFreq$Var1)!=0 & segIDFreq$Freq>minNo,]
+    segIDFreq<-segIDFreq[!segIDFreq$Var1 %in% id.out,] #manually removes ids if needed
+    
     # subset orginal tracks to those Buffer_id1 w/ > minNo obs
-    tracks <- tracks[tracks[,paste(clipperName,'_id2',sep='')] %in% pttIDFreq$Var1,]
-    #### tally number of relocations
-    pttIDFreq.out<-as.data.frame(table(floor(tracks[,paste(clipperName,'_id2',sep='')])))
-    pttIDFreq.out<-pttIDFreq.out[(pttIDFreq.out$Var1)!=0 & pttIDFreq.out$Freq>minNo,]
-    #print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
-  
-  # if (id.2=="seg_time") {
-  #   Idx<-which(grepl(paste(clipperName,'_id2',sep=''), names(ptt)))
-  #   ptt <- ptt[ptt[,Idx]!=0,]
-  #   clipid<-paste(clipperName,'_id2',sep='')
-  #   ptt$ptt_deploy_id_time<-paste0(ptt[,paste(clipperName,'_id2',sep='')],"_",ptt$time.grp.var)
-  #   # get frequncies from the segments - paste(clipperName,'_id2',sep='')
-  #   pttIDFreq<-as.data.frame(table(ptt$ptt_deploy_id_time))
-  #   print("All Segment IDs and number of loctions"); print(pttIDFreq)
-  #   # select segments > min #
-  #   pttIDFreq<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   pttIDFreq<-pttIDFreq[!pttIDFreq$Var1 %in% id.out,] #manually removes ids if needed
-  #   # subset orginal ptt to those Buffer_id1 w/ > minNo obs
-  #   ptt <- ptt[ptt$ptt_deploy_id_time %in% pttIDFreq$Var1,]
-  #   #### tally number of relocations
-  #   pttIDFreq.out<-pttIDFreq[(pttIDFreq$Var1)!=0 & pttIDFreq$Freq>minNo,]
-  #   print("Selected IDs and number of loctions"); print(pttIDFreq.out)}
-  
+    tracks <- tracks%>%dplyr::filter(seg_id %in% segIDFreq$Var1)
+    
   #### convert ptt data to spatial, points are brought in WGS84
   tracks.sp <- SpatialPointsDataFrame(coords = tracks[c("lon1","lat1")], data = data.frame(utc = tracks$utc))
 
-  # define projection, use the WGS84 projection that Argos Data is delivered in
-  if (tagtype=="ptt")
-  {tracks.sp@proj4string <- CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")}
+  # define projection, use the WGS84 projection that is typical
+  tracks.sp@proj4string <- CRS(proj4tracks)
   
   # transform the track to projection selected for ploygon
   tracks.sp_proj<-spTransform(tracks.sp, CRS(projWant))
-  projW<-CRS(projWant)
+  projtracks<-CRS(projWant)
   
   # select relevant data for kernel density analysis
   tracks$date_time <- as.POSIXct(strptime (tracks.sp_proj@data$utc, "%Y-%m-%d %H:%M:%S"), "GMT")
   
-  coords       <- tracks.sp_proj@coords    # projected coords
+  coords <- tracks.sp_proj@coords    # projected coords
   colnames(coords)<-c("x_proj","y_proj")
   tracks<-cbind(tracks,coords)
   
-  #if (id.2=="all") {burst<- ptt$ptt_deploy_id} #all birds
-  #if (id.2=="all_time") {burst<- ptt$ptt_deploy_id_time} #all birds, grouped by time variable
-  if (id.2=="seg") {tracks$burst<- tracks[,paste0(clipperName,'_id2')]} #birds within a polygon
-  #if (id.2=="seg_time") {burst<- ptt$ptt_deploy_id_time} #birds within a polygon grouped by a time variable
-  ptt_deploy_id<-tracks$ptt_deploy_id
   colnames(tracks)
+  
   # CREATE TRACKS USING YOUR TIME AND LOCATION DATA FOR KERNELBB ANALYSIS
-  #catchall to remove duplicate datetimes within ptt_deploy_id
-  tracks1 <-  tracks %>% distinct(ptt_deploy_id,date_time,.keep_all = T) %>%
-                  arrange(ptt_deploy_id,date_time)
+  # catchall to remove duplicate datetimes within ptt_deploy_id
+  tracks1 <-  tracks %>% distinct(uniID,date_time,.keep_all = T) %>%
+                  arrange(uniID,date_time)
+  
   track.ltj <- as.ltraj(xy = cbind(tracks1$x_proj,tracks1$y_proj), 
                     date = tracks1$date_time, 
-                    id = tracks1$ptt_deploy_id, 
-                    burst = tracks1$burst, 
+                    id = tracks1$uniID, #bird level split by time
+                    burst = tracks1$seg_id, #all the segments for each bird go in the same burst
                     typeII = TRUE)
   
-  track.all<-summary(track)
-  track.all$id<-as.numeric(as.vector.factor(track.all$id))
-  track.all<-track.all[order(track.all$id),]
-  days<-(as.numeric(track.all$date.end-track.all$date.begin))/24
-  
-  tracksums.out<-cbind(track.all, days) 
-  tracksums.out$deploy_id<-floor(tracksums.out$id)
-  tracksums.out<- merge(tracksums.out, meta, by.x = "deploy_id", by.y = "ptt_deploy_id" )  
-  
+  #summarize time tracked
+  tracksums.out<-tracks1%>%
+    group_by(seg_id)%>%
+    summarise(date.end=max(date_time),date.begin=min(date_time))%>%
+    mutate(days=as.numeric(difftime(date.end,date.begin,units = c("days"))))
+    
   # CALCULATE UDBB WITH YOUR SPECIFIED SPEED AND SMOOTHING TERMS 
-  bb <- kernelbb(track.ltj, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  ## speed in m/s use same for each species and MATCH what you'be done for SDA, 
-
+  ## speed in m/s use same for each species and MATCH what you'be done for SDA, 
   #this possibly done b/c BB has prefilter based on speed, we've already done speed distance and angle
-  bbvol = getvolumeUD (bb)
-  ## Create a list of raster maps containing ud if the pixel is inside the 100% home range and 0 otherwise
-  ## NOTE: ud estimates have been scaled by multiplying each value by 9000^2 to make prob vol that sums to 1.00 accross pixel space
+  bb <- kernelbb(track.ltj, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  
   
-  output<-list(bb,bbvol,tracksums.out,contour,projW,track)
+  bbvol = getvolumeUD (bb)
+  
+  output<-list(bb,bbvol,tracksums.out,contour,projtracks,tracks1)
   names(output)<-c("bb","bbvol","tracksums.out","contour","projW","track")
   return(output)
 }
@@ -738,6 +670,7 @@ bb_segmentation<-function(tracks, #tracking data
 bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
                           tracksums=tracksums.out,
                          cellsize=3000){
+  ## NOTE: ud estimates have been scaled by multiplying each value by cellsize^2 to make prob vol that sums to 1.00 accross pixel space
   #individuals also may be split across groups (year, season) if the tracks were segmented useing these 
   
   require(adehabitatHR)

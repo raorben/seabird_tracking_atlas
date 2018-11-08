@@ -74,13 +74,12 @@ dev.off()
 
 
 # Adds a time component to identify and label segments -------------------------------
+# only returns segments inside the poly or buffer
 tracks_inpoly_df<-tracks_inpoly$tracks.out
 
 tracks_seg_df<-calc_leavetimesegs(hrs=72, tracks=tracks_inpoly_df, clipperName)
 unique(tracks_seg_df$seg_id) #how many segments?
 length(unique(tracks_seg_df$seg_id))
-
-tracks_seg_df$time.grp.var<-tracks_seg_df$year
 
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
@@ -91,13 +90,10 @@ segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
                             speed,
                             id.out = c("99999"), # to manually exclude birds or segments "99999" excludes none
-                            contour=99.999, # the maximum contour to return, use 99.999 for 100 ud contours
-                            sig2=cellsize,#
+                            sig2=cellsize,#the second smoothing parameter was 3000 m (the approximate mean error for PTT locations)
                             cellsize=cellsize,# related to error tags, in m
                             minNo=2,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
-                            id.2="seg",##all=bird.id (run entire ptt) or "seg"=clip.name_id2 (run segments of track that are in box then sum them based on number of days tracked)
-                            tagtype="ptt",
-                            meta=meta) #metadata from PTT_metadata_all.csv for the species
+                            proj4tracks="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") 
 
 saveRDS(segments,file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_1_segments.rda"))
 segments<-readRDS(file=paste0(dir,"species/",species,"/",species,"_",clipperName,"_bb_1_segments.rda"))
