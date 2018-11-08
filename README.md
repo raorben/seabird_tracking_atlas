@@ -1,7 +1,7 @@
 # seabird_tracking_atlas
 
 # *****************************
-## FUNCTIONS for the California Current Telemetry Atlas
+## Codes for the California Current Telemetry Atlas
 ## Original Codes written by Bill Henry 
 ## Adapted into functions & scripts by Rachael Orben 
 # *****************************
