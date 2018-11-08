@@ -1,0 +1,194 @@
+---
+title: "Track Prep Filter for Seabird Telemetry Atlas"
+author: "Original code written by Bill Henry; Adapted into functions and scripts by Rachael Orben"
+date: "November 8, 2018"
+output: html_document
+---
+
+## Raw Data Formatting
+
+In order to use the Track Prep Filter, please format raw tracking data and metadata for use in coding according to the following instructions -
+
+1. Tracking Data in raw format, must include at minimum:
+
+* latitude, longitude, datetime (in UTC)
+* folder/file structure and metadata should reference species and unique ID
+
+
+2. Metadata (as a csv file of all individuals), include:
+
+* add: tag_type, unique ID (concatinate columns band_number, animal_id, tag_id - maybe also species and/or deploy_year)
+
+* keep: band_number, animal_id, tag_id, species, *deploy_year*, deploy_site, lat_deploc, long_deploc, incl_deploy_loc, incl_recovery_loc, lat_colony, lon_colony, lat_end, lon_end, datetime_deploy_UTC, datetime_recover_UTC, collab1_point_contact_name, collab1_point_contact_email, collab1_organization, collab2_point_contact_name, collab2_point_contact_email, collab2_organization, *age*, *sex*, notes
+
+* ask/modify: loc_data, ptt_deploy_id, datetime_start_track_UTC, datatime_end_track_UTC, file_name, observer, ptt_tagid, 
+
+* remove: UnfilteredDataInCompiledFile, FilteredDataInCompiledFile, site_abbrev, grouping_var_1, dir1, dir2, tag_sensors, Mass_kg, Length_cm, Girth_cm, transmission duration, feather sample, blood sample, chick foraging_datetime_start_UTC, Duration, nb_locs, Species_num, Status_numb, Sex_num, Duty_cycle, Best_track, Repeat, Complete_track, Loc_num, Track_ID
+
+
+
+
+
+```{r}
+
+```
+
+
+## Load Packages
+
+Load the following packages to use the Track Prep Filter. Use install() if you do not have these packages in your library.
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+library(gridExtra)
+library(dplyr)
+library(reshape2) #changed from "reshape", may want/need to switch to tidyr
+library(adehabitatHR)
+library(argosfilter)
+library(ggplot2)
+```
+
+
+## Clear lists and prep R studio to work with species
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+rm(list=ls())
+species="COMU"
+```
+
+
+## Folder and File Management
+
+Create the following folder/file structure in your directory, within an overarching folder:
+
+1. species > COMU (or 4 letter AOU code of species you are working with) > 1_DataIn (csv files of tracks by     individual)
+
+2. supportables 
+
+* csv files provided on github (clipPolyList, flightspeeds, lcerrors, parameters) 
+
+* csv of metadata as described "Raw Data Formatting" above
+
+Set code below to match your directory structure.
+
+*Note: Rachel is using a mac and pulling code directly from github, Cheryl is using windows and pulling code locally after downloading seabird_tracking_atlas from github*
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
+if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+
+if(Sys.info()[6]=="cahorton") {dir<-"C:/Users/cahorton/Documents/TelemetryAtlas/"}
+if(Sys.info()[6]=="cahorton") {gitdir<-"C:/Users/cahorton/Documents/TelemetryAtlas/seabird_tracking_atlas-master/"}
+source(paste0(gitdir,"STA_Functions.R"))
+
+```
+
+
+## Tables needed to run the function "trackfilter"
+
+This code puts together metadata, parameters and lcerrors, for use throughout remaining code.
+* parameters.csv includes maximum flight speeds, angles, and distance limits, along with the sources of these parameters for various tag types and species included in the dataset
+* lcerrors.csv includes error calculations - **ASK JOSH TO DESCRIBE/EXPLAIN THESE**
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "",stringsAsFactors = FALSE)
+parameters <- read.csv (paste0(dir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+lcerrors <- read.csv(paste0(dir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+
+meta%>%dplyr::filter(species=="COMU")%>%
+  group_by(year,deploy_site,collab1_point_contact_name)%>%
+  dplyr::summarize(n_birds=n_distinct(tag_id),minDate=min(datetime_deploy_UTC))
+```
+
+
+## Run the function "trackfilter"
+
+Tracks are single files, file name matching one in the meta file. Saved in "dir.in". Uses Frietas Filter.
+
+* tf_out is a large list of the following three items
+* tracks_filt is the concatinated data
+* tf_plots is a list of ggplots showing prefiltered and filtered locations
+* tf_info is a table of the filtering info
+
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+tf_out<-trackfilter(species=species,
+                          year=NA,
+                          dir=dir,
+                          dir.in=paste0(dir,"species/COMU/1_DataIn"),
+                          tagtype="ptt", 
+                          lcerrref="costa",
+                          parameters=parameters,
+                          meta=meta,
+                          lcerrors=lcerrors)
+tracks_filt<-tf_out[[1]]
+tf_plots<-tf_out[[2]] 
+tf_info<-tf_out[[3]]
+```
+
+##Create a table from tf_info and summarize
+
+Include animal.id, TrackLengthOrig, Tracklenght_clipped, and add a column summarizing the percent of points removed from each track
+
+Then, print the mean, sd, min and max value for the percent of points removed from tracks in the full dataset. If you want to subset by year or other factors, those parameters will need to be added back in.
+```{r}
+subtable_tf_info <- tf_info %>%
+group_by(animal.id) %>%
+summarise(Tracklength_clipped,retained) %>%
+mutate(ppts.removed = ((Tracklength_clipped-retained)/Tracklength_clipped)*100)
+
+mean(subtable_tf_info$ppts.removed)
+sd(subtable_tf_info$ppts.removed)
+min(subtable_tf_info$ppts.removed)
+max(subtable_tf_info$ppts.removed)
+```
+
+## Create QC plots of the filtered track data by individual in a single PDF
+
+```{r, error = FALSE, message = FALSE, warning = FALSE, results="hide"}
+pdf(paste0(dir,"species/",species,"/",species,"_trackfilter_QC_plots.pdf"), onefile = TRUE)
+for(i in 1:length(tf_plots)){
+  top.plot <-tf_plots[[i]]
+  grid.arrange(top.plot)
+}
+dev.off()
+```
+
+## Run the function "tf_filt_sum"
+
+This function summarizes the filtered data (Frietas Filter)
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+filt_sum<-tf_filt_sum(tracks_filt)
+
+ggplot()+
+geom_col(data = filt_sum, aes(ptt_deploy_id, (retained_1/(filtered_1+retained_1))))+
+facet_wrap(~lc)
+
+```
+
+## Run the function "tf_filt_error"
+
+This provides error estimates for each tag based on performance after filtering (Frietas Filter)
+
+
+```{r, error = FALSE, message = FALSE, warning = FALSE}
+filt_error<-tf_filt_error(tracks_filt,filt_sum,lcerrors,"costa")
+head(filt_error) 
+
+mean(filt_error$mean.error.track)
+sd(filt_error$mean.error.track)
+nrow(filt_error) #number of individuals
+
+
+save(tracks_filt,tf_info,filt_sum,filt_error, 
+     file = paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
+```
+
+##Track data filtering is complete
+Use rmarkdown PolyClip for the next steps 
+
+##Optional output formats not used in the next step (.RData file is used instead)
+write.csv(tracks_filt,file=paste0(dir,"species/",species,"/",species,"_trackfilter.csv"))
+write.csv(tf_info,file=paste0(dir,"species/",species,"/",species,"_tf_info.csv"))
+write.csv(filt_sum,file=paste0(dir,"species/",species,"/",species,"_filt_sum.csv"))
+write.csv(filt_error,file=paste0(dir,"species/",species,"/",species,"_filt_error.csv"))
