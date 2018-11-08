@@ -1,6 +1,6 @@
 library(gridExtra)
 library(dplyr)
-library(reshape)
+library(reshape2)
 
 # DATA PREPRUN SCRIPT: COMU
 # data are from Argos PTT deployments 2012-2017
