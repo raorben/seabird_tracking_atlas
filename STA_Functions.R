@@ -114,14 +114,14 @@ trackfilter<-function(species,
     animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
     ptt_deploy_id <- meta$ptt_deploy_id[i]
-    print(animal.id)
+    #print(animal.id)
     
     #### read in track
     track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
-    print ('Total rows')
+    #print ('Total rows')
     #track$utc<-as.character(track$utc)
     TrackLengthOrig<-(length (track[,1]))
-    print (length (track[,1]))
+    #print (length (track[,1]))
     #allows for two different styles of datetimes in logger files:
     if (grepl(track$utc[1],pattern="/")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "GMT", format = "%m/%d/%Y %H:%M"))
     if (grepl(track$utc[1],pattern="-")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "GMT", format = "%Y-%m-%d %H:%M:%S"))
@@ -197,7 +197,7 @@ trackfilter<-function(species,
     #### remove all lat-long values = 0
     latlon0=sum(as.numeric(track$lat1 == 0 | track$lon1 == 0))
     track<-track[(track$lat1 != 0 | track$lon1 != 0),]
-    print (c('Total rows after latlon=0 removed',length(track[,1])))
+    #print (c('Total rows after latlon=0 removed',length(track[,1])))
     
     # replace lc with numbers
     track$lc <- as.character(track$lc) # change to characters
@@ -265,11 +265,11 @@ trackfilter<-function(species,
     filtered<- (length(track[,1]) - sum(track$keeps))
     
     #### screen output		
-    print(c("TrackLengthOrig",TrackLengthOrig,"Tracklength_clipped",Tracklength_clipped,
-            "TrackLength_ends_added",TrackLength_ends_added,
-            "latlong=0",latlon0,"dup removed", 
-            dupremoved,"filtered",filtered,
-            "retained",retained))
+    #print(c("TrackLengthOrig",TrackLengthOrig,"Tracklength_clipped",Tracklength_clipped,
+    #        "TrackLength_ends_added",TrackLength_ends_added,
+    #        "latlong=0",latlon0,"dup removed", 
+    #        dupremoved,"filtered",filtered,
+    #        "retained",retained))
    
     info<-data.frame(animal.id,ptt_deploy_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
