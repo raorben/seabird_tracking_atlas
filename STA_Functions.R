@@ -281,7 +281,7 @@ trackfilter<-function(species,
     INFO<-bind_rows(INFO,info) #was rbind_fill()
     rm(info)
     
-    #track$sensors<-as.character(track$sensors)
+    track$sensors<-as.character(track$sensors)
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
     
     # bind all filtered tracks

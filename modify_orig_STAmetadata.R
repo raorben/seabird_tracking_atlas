@@ -47,8 +47,8 @@ STA_rcode_metadata <- rename(STA_rcode_metadata, deploy_year = year)
 STA_rcode_metadata <- rename(STA_rcode_metadata, collab2_organization = collab1_organization.1)
 names(STA_rcode_metadata)
 
-#Add a column for tag type and fill in with PTT for all existing data in this dataframe
-STA_rcode_metadata$tag_type="PTT"
+#Add a column for location type and fill in with PTT for all existing data in this dataframe
+STA_rcode_metadata$location_type="PTT"
 head(STA_rcode_metadata)
 
 #Add a column that concatinates various columns to create a unique ID
