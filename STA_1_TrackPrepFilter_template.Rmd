@@ -17,17 +17,7 @@ In order to use the Track Prep Filter, please format raw tracking data and metad
 
 2. Metadata (as a csv file of all individuals), include:
 
-* add: tag_type, unique ID (concatinate columns band_number, animal_id, tag_id - maybe also species and/or deploy_year)
-
-* keep: band_number, animal_id, tag_id, species, *deploy_year*, deploy_site, lat_deploc, long_deploc, incl_deploy_loc, incl_recovery_loc, lat_colony, lon_colony, lat_end, lon_end, datetime_deploy_UTC, datetime_recover_UTC, collab1_point_contact_name, collab1_point_contact_email, collab1_organization, collab2_point_contact_name, collab2_point_contact_email, collab2_organization, *age*, *sex*, notes
-
-* ask/modify: loc_data, ptt_deploy_id, datetime_start_track_UTC, datatime_end_track_UTC, file_name, observer, ptt_tagid, 
-
-* remove: UnfilteredDataInCompiledFile, FilteredDataInCompiledFile, site_abbrev, grouping_var_1, dir1, dir2, tag_sensors, Mass_kg, Length_cm, Girth_cm, transmission duration, feather sample, blood sample, chick foraging_datetime_start_UTC, Duration, nb_locs, Species_num, Status_numb, Sex_num, Duty_cycle, Best_track, Repeat, Complete_track, Loc_num, Track_ID
-
-
-
-
+AND add new data using the following code.
 
 ```{r}
 
@@ -77,7 +67,7 @@ if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_O
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 if(Sys.info()[6]=="cahorton") {dir<-"C:/Users/cahorton/Documents/TelemetryAtlas/"}
-if(Sys.info()[6]=="cahorton") {gitdir<-"C:/Users/cahorton/Documents/TelemetryAtlas/seabird_tracking_atlas-master/"}
+if(Sys.info()[6]=="cahorton") {gitdir<-"C:/Users/cahorton/Documents/R/seabird_tracking_atlas/"}
 source(paste0(gitdir,"STA_Functions.R"))
 
 ```
@@ -91,8 +81,8 @@ This code puts together metadata, parameters and lcerrors, for use throughout re
 
 ```{r, error = FALSE, message = FALSE, warning = FALSE}
 meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "",stringsAsFactors = FALSE)
-parameters <- read.csv (paste0(dir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
-lcerrors <- read.csv(paste0(dir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
+lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 
 meta%>%dplyr::filter(species=="COMU")%>%
   group_by(year,deploy_site,collab1_point_contact_name)%>%
@@ -185,7 +175,7 @@ save(tracks_filt,tf_info,filt_sum,filt_error,
 ```
 
 ##Track data filtering is complete
-Use rmarkdown PolyClip for the next steps 
+Use rmarkdown STA_2_BrownianBridges_template.rmd for the next step 
 
 ##Optional output formats not used in the next step (.RData file is used instead)
 write.csv(tracks_filt,file=paste0(dir,"species/",species,"/",species,"_trackfilter.csv"))
