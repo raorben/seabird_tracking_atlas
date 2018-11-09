@@ -281,7 +281,7 @@ trackfilter<-function(species,
     INFO<-bind_rows(INFO,info) #was rbind_fill()
     rm(info)
     
-    track$sensors<-as.character(track$sensors)
+    #track$sensors<-as.character(track$sensors)
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
     
     # bind all filtered tracks
@@ -701,9 +701,9 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
 
         # get number of track days (in decimal days)
         track.days[[j]]<-tracksums.want$days[tracksums.want$uniID==track.freq$uniID[j]]
-        paste(paste("bird:",track.freq$uniID[j],
-                    "segnum:",track.freq$n[j],
-                    "area:",sum(slot(ud.track[[j]],"data")[,1])))
+        #paste(paste("bird:",track.freq$uniID[j],
+        #            "segnum:",track.freq$n[j],
+        #            "area:",sum(slot(ud.track[[j]],"data")[,1])))
       } else {
         # get multiple segments
         days.segs<-tracksums.want$days[tracksums.want$uniID==track.freq$uniID[j]]
@@ -731,7 +731,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
         ud.track[[j]]<-estUDsum
         # get number of track days
         track.days[[j]]<-sum(days.segs)}
-        print(paste(j,k,sum(slot(ud.track[[j]],"data"))))
+        #print(paste(j,k,sum(slot(ud.track[[j]],"data"))))
       }
 
     names(ud.track)<-track.freq$uniID
