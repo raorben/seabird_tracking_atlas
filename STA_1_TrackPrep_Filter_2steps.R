@@ -36,7 +36,7 @@ meta%>%dplyr::filter(species=="COMU")%>%
 
 #Tracks are single files file name matching one in the meta file. Saved in "dir.in".  
 #Output is a list, obj 1 is the concatinated data, obj 2 is a list of plots, obj 3 is a table of the filtering info
-tf_out<-track_prep_filter(species=species,
+tf_out<-trackfilter(species=species,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/COMU/1_DataIn"),

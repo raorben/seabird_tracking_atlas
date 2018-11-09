@@ -101,7 +101,7 @@ Tracks are single files, file name matching one in the meta file. Saved in "dir.
 
 
 ```{r, error = FALSE, message = FALSE, warning = FALSE}
-tf_out<-trackfilter(species=species,
+tf_out<-track_prep_filter(species=species,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/COMU/1_DataIn"),

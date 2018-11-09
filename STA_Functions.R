@@ -24,7 +24,7 @@
 # swaps between loc1 and loc2 need to have been done (RAO thinks)<-add in
 # tracks need to have columns: utc,ptt,tag_id,year,uid,lat1,lon1,lat2,lon2
 
-trackfilter<-function(species,
+track_prep_filter<-function(species,
                             year=NA,
                             dir=dir, 
                             dir.in=dir.in, #location of csv files named by each ARGOSID
