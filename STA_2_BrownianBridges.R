@@ -56,7 +56,7 @@ remove(tf_info); remove(filt_sum); remove(filt_error)
 ## #########################################################################
 # Unique ID for dataset and grouping
 unique(paste0(tracks_filt$ptt_deploy_id,"_",year(tracks_filt$utc)))
-tracks_filt$uniID<-paste0(tracks_filt$ptt_deploy_id,"_",year(tracks_filt$utc))
+tracks_filt$uniID<-paste0(tracks_filt$uniID,"_",year(tracks_filt$utc))
 length(unique(tracks_filt$uniID))
 
 # #########################################################################
@@ -88,7 +88,7 @@ length(unique(tracks_seg_df$seg_id))
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
-
+speed<-45
 segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
@@ -217,24 +217,24 @@ A<-ggplot() +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
-B<-ggplot() +
-  geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  geom_path(data=tracks_filt%>%
-              filter(year==grp.ids[[h]])%>%
-              filter(keeps==1),
-            aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
-  geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
-  theme_bw() +
-  coord_equal() +
-  coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
-  theme(axis.title.x = element_text(size=16),
-        axis.title.y = element_text(size=16, angle=90),
-        axis.text.x = element_text(size=8),
-        axis.text.y = element_text(size=8),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+# B<-ggplot() +
+#   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
+#   geom_path(data=tracks_filt%>%
+#               filter(year==grp.ids[[h]])%>%
+#               filter(keeps==1),
+#             aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
+#   geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
+#   theme_bw() +
+#   coord_equal() +
+#   coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
+#   theme(axis.title.x = element_text(size=16),
+#         axis.title.y = element_text(size=16, angle=90),
+#         axis.text.x = element_text(size=8),
+#         axis.text.y = element_text(size=8),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank())
 
-plotAB<-gridExtra::grid.arrange(A,B,ncol=2)
+plotAB<-gridExtra::grid.arrange(A,ncol=2)
 ggsave(plotAB,filename = paste0(dir,"species/",species,"/",grp.ids[h],"_",species,"_",clipper_list$clipperName,".png"),width=10,dpi = 300)
 
   }

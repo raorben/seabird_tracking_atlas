@@ -1,6 +1,10 @@
 library(sf)
 library(dplyr)
 
+# set directories
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
+if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+
 #makes a polygon for the West Coast Region: Cape Mendicino north to limit of WC EEZ.
 
 #http://www.marineregions.org/downloads.php World EEZ v10 (2018-02-21, 119 MB) 
@@ -111,6 +115,23 @@ WC_eez<-st_difference(WC_eez, polygon_riverFortuna) #cuts the eezs inside the bo
 WC_eez<-st_difference(WC_eez, polygon_riverKalamath) #cuts the eezs inside the box to the box
 
 plot(st_geometry(WC_eez))
+saveRDS(WC_eez, paste0(dir,"/polygons/sf_WC_eez_PNW.rda"))
 
 #WC_eez6<-st_buffer(WC_eez5,dist = .1)
 #plot(st_geometry(WC_eez6))
+
+
+x_coord <- c(-130,-110, -110, -130, -130)
+y_coord <- c (41.998443, 41.998443,  46.262917,  46.262917, 41.998443)
+polygon_aroundOReez <-  cbind(x_coord, y_coord) %>%
+  st_linestring() %>%
+  st_cast("POLYGON") %>%
+  st_sfc(crs = 4326, check_ring_dir = TRUE) %>%
+  st_sf() %>%
+  st_wrap_dateline(options = c("WRAPDATELINE=YES", "DATELINEOFFSET=180"))
+
+WC_eezOR<-st_intersection(WC_eez, polygon_aroundOReez) #cuts the eezs inside the box to the box
+plot(st_geometry(WC_eezOR))
+
+saveRDS(WC_eezOR, paste0(dir,"/polygons/sf_WC_eez_OR.rda"))
+        
