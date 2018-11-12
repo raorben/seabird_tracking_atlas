@@ -7,86 +7,51 @@ library(gridExtra)
 rm(list=ls())
 
 # set directories
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"} ##RAO
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 # read in STA wrapper functions
 source(paste0(gitdir,"STA_Functions.R"))
 
 # read in list of potential clipper files, polys are stored as WGS84 and then projected by PolygonPrep_CCESTA
-clipPolyList<-read.csv (paste(dir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
-print(clipPolyList[26,]) # show a list of the clipper files
-clipperName<-as.character(clipPolyList$name[26])
+clipPolyList<-read.csv (paste(gitdir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
+print(clipPolyList[27,]) # show a list of the clipper files
+CN<-as.character(clipPolyList$name[27])
 
 # Pulls in requested polygon  --------------------------------------------
 #and associated projection data, projects, calculates buff, return polygons
-polygrid_prep<-function(rno,
-                        clipPolyList=clipPolyList, 
-                        dir=dir,
-                        plot="on",
-                        bufferkm=33.6,
-                        cellsize=3000){
+CLIPPERS<-polygrid_forsf_prep(clipperName=CN,
+                              clipperfileName=paste0(CN,"_sf.rda"),
+                              rno=27,
+                              clipPolyList=clipPolyList, 
+                              dir=dir,
+                              plot="on",
+                              bufferkm=33.6,
+                              cellsize=3000)
   
-  require(sp)
-  require(maptools)
-  require(raster)
-  require(rgdal)
-  require(rgeos)
-  require(stringr)
-  
-  
-  #### select clipperfile from clipPolyList
-  clipperN<-as.character(clipPolyList$clipFileName[rno])
-  clipperName<-as.character(clipPolyList$name[rno])
-  
-  #### dir.in.poly in polygon .shp file for clipping
-  dir.in.poly <- paste0(dir,"polygons/",clipperN)
-  
-  # read in polygon
-  clipper <- readOGR(dir.in.poly,clipperN) # clipper comes in as unprojected WGS84
-  # read in projection best for selected polygon (contained in table clipPolyList)
-  projWant<-paste("+",as.character(clipPolyList$Proj4.specs[rno]),sep="")
-  
-  # if polygon multipart, select polygon
-  #if (clipPolyList$mult_polygons[rno]==1) {
-  #  clipper<-subset(clipper,(clipper$LME_NAME)==as.character(clipPolyList$poly_want[rno]))
-  #}
-  
-  #if (clipPolyList$mult_polygons[rno]==1) {
-  #  clipper<-clipper[clipper@data$Territory1 == "Alaska", ]
-  #}
-  
-  # transform spatial polygons to projection appropriate for region in question (California Current in this case)
-  clipper_proj<-spTransform(clipper, CRS(projWant))
-  
-  #### ui enter buffer distance
-  buffDist<-bufferkm*1000 # convert km to m
-  
-  # create buffer
-  clipperBuff_proj<-gBuffer(clipper_proj, byid=F, id=NULL, width=buffDist, quadsegs=5, capStyle="ROUND", joinStyle="ROUND", mitreLimit=1.0)
-  
-  ## plot shape polygon for clipping
-  if (plot=="on") {
-    p1<- plot(clipper_proj, axes=T,  border="gray")
-    p1<-p1 + plot(clipperBuff_proj, add=T)
-  }
-  
-  #### get extent of clipper buffer and make grid for KD analysis
-  ext<-extent(clipperBuff_proj[1,1])
-  grid.lon <- c(ext@xmin, ext@xmin, ext@xmax, ext@xmax)
-  grid.lat <- c(ext@ymax, ext@ymin, ext@ymin, ext@ymax)
-  grid.loc <- SpatialPoints(cbind(grid.lon, grid.lat))
-  rast <- ascgen(grid.loc, cellsize=cellsize)
-  
-  #plot(rast)  
-  #plot(clipper_proj, col="white",add=T)
-  #plot(clipperBuff_proj, add=T, border="gray")
-  #plot(ext, col="green",add=T)
-  
-  CLIPPERS<-list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName,rast)
-  names(CLIPPERS)<-c("clipper","clipper_proj","clipperbuff_proj","projWant","clipperName","rast")
-  return(CLIPPERS)
-}
+
+clipperName<-CLIPPERS$clipperName
+rast<-CLIPPERS$rast
+saveRDS(object=CLIPPERS,file=paste0(dir,"polygons/",clipperName,".rda"))
+CLIPPERS<-readRDS(file=paste0(dir,"polygons/",clipperName,".rda"))
+
+
+# read in list of potential clipper files, polys are stored as WGS84 and then projected by PolygonPrep_CCESTA
+clipPolyList<-read.csv(paste(gitdir,"supporttables/clipPolyList.csv", sep=""), header=T, sep=",", strip.white=T)
+print(clipPolyList[28,]) # show a list of the clipper files
+CN<-as.character(clipPolyList$name[28])
+
+# Pulls in requested polygon  --------------------------------------------
+#and associated projection data, projects, calculates buff, return polygons
+CLIPPERS<-polygrid_forsf_prep(clipperName=CN,
+                              clipperfileName=paste0(CN,"_sf.rda"),
+                              rno=28,
+                              clipPolyList=clipPolyList, 
+                              dir=dir,
+                              plot="on",
+                              bufferkm=33.6,
+                              cellsize=3000)
+
 
 clipperName<-CLIPPERS$clipperName
 rast<-CLIPPERS$rast

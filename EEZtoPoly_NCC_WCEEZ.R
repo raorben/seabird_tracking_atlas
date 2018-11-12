@@ -115,10 +115,8 @@ WC_eez<-st_difference(WC_eez, polygon_riverFortuna) #cuts the eezs inside the bo
 WC_eez<-st_difference(WC_eez, polygon_riverKalamath) #cuts the eezs inside the box to the box
 
 plot(st_geometry(WC_eez))
-saveRDS(WC_eez, paste0(dir,"/polygons/sf_WC_eez_PNW.rda"))
+saveRDS(WC_eez, paste0(dir,"/polygons/PNW_wUSEEZ_sf.rda"))
 
-#WC_eez6<-st_buffer(WC_eez5,dist = .1)
-#plot(st_geometry(WC_eez6))
 
 
 x_coord <- c(-130,-110, -110, -130, -130)
@@ -133,5 +131,5 @@ polygon_aroundOReez <-  cbind(x_coord, y_coord) %>%
 WC_eezOR<-st_intersection(WC_eez, polygon_aroundOReez) #cuts the eezs inside the box to the box
 plot(st_geometry(WC_eezOR))
 
-saveRDS(WC_eezOR, paste0(dir,"/polygons/sf_WC_eez_OR.rda"))
+saveRDS(WC_eezOR, paste0(dir,"/polygons/Oregon_wUSEEZ_sf.rda"))
         

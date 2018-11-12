@@ -1261,73 +1261,92 @@ bb_sumbygroup<-function(bbindis,
 
 # plots -----------------------------------------------------------
 
-bb_plot<-function(clipperName,
-                           dir,
-                           raster.in.dir,
-                           rastername,
-                           lat1,
-                           lat2,
-                           lon1,
-                           lon2){
+sta_quickplot<-function(bbgroups,
+                        clipper_list=clipper_list,
+                        dir,
+                        species,
+                        tracks_filt=tracks_filt){
+  
   
   require(ggplot2)
-  
-  w2hr<-map_data('world')
-  w2hr_sub<-w2hr[w2hr$region%in%c("USA","Mexico","Canada","Alaska","Russia","Japan"),]
   states<-map_data('state') 
-  states_sub<-states[states$region%in%c("washington","oregon","california","alaska","hawaii"),]
+  states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
   
-  #convert the raster to points for plotting
-  allgrps.indiv.raster<-raster(re)
-  cellStats(allgrps.indiv.raster,'sum')
+  #get the clipper ready
+  clipper_wgs84<-clipper_list$clipper
+  (prjWant<-clipper_list$projWant)
+  clipper_proj<-clipper_list$clipper_proj
   
-  proj4string(allgrps.indiv.raster)<-CRS("+proj=aea +lat_1=30 +lat_2=50 +lat_0=40 +lon_0=-125 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
-  allgrps.indiv.raster.wgs84<-projectRaster(allgrps.indiv.raster,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+  grp.ids<-names(bbgroups)
   
-  map.p <- rasterToPoints(allgrps.indiv.raster.wgs84)
-  
-  CLIPPERS<-readRDS(file=paste0(dir,"polygons/CCESTA_",clipperName,".rda")) #list(clipper,clipper_proj,clipperBuff_proj,projWant,clipperName)
-  clipper<-CLIPPERS[[1]]
-  
-  #Now make the map
-  #Make the points a dataframe for ggplot
-  df <- data.frame(map.p)
-  head(df)
-  colnames(df)<-c("Longitude","Latitude","Density")
-  
-  
-  df$Density.sqrt<-sqrt(df$Density)
-  df$Density.sqrt[df$Density<=0]<-NA
-  
-  #doesn't work
-  min(df$Density,na.rm=TRUE); max(df$Density,na.rm=TRUE)
-  df$Density.d<-NA
-  df$Density.d[df$Density.n>=0.75 & df$Density.n<=0.95]<-95
-  df$Density.d[df$Density.n<=0.75 & df$Density.n>=0.50]<-75  
-  df$Density.d[df$Density.n<=0.50 & df$Density.n>=0.25]<-50  
-  df$Density.d[df$Density.n<=0.25]<-25  
-  
-  ggplot() +
-    geom_raster(data=df, aes(y=Latitude, x=Longitude,fill=Density.sqrt)) +
-    scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density") +
-    geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-    geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-    geom_polygon(data=clipper,aes(long,lat,group=group),fill="NA",color="gray",size=.2)+
-    theme_bw() +
-    coord_equal() +
-    coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(37,48))+
-    #coord_fixed(ratio=1.7,xlim = c(lon1,lon2),ylim=c(lat1,lat2))+
-    theme(axis.title.x = element_text(size=16),
-          axis.title.y = element_text(size=16, angle=90),
-          axis.text.x = element_text(size=12),
-          axis.text.y = element_text(size=12),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank())
-
-  
-  filename1 <- sapply(strsplit(rastername, split='.', fixed=TRUE), function(x) (x[1]))
-  ggsave(paste0(dir,filename1,".png"))
+  for (h in 1:length(names(bbgroups))){
+    # make the estUD into a raster
+    a<-bbgroups[[h]]
+    allgrps.indiv.raster<-raster(a$den_sum)
+    
+    # add projection to raster
+    proj4string(allgrps.indiv.raster)<-CRS(prjWant)
+    proj4string(allgrps.indiv.raster)
+    
+    #cellStats(allgrps.indiv.raster,'sum')
+    
+    # crop raster to clipper
+    r2 <- crop(allgrps.indiv.raster, extent(clipper_proj))
+    allgrps.indiv.raster.clip <- raster::mask(r2, clipper_proj)
+    
+    ## Check that it worked
+    #plot(allgrps.indiv.raster.clip)
+    #plot(clipper_proj, add=TRUE, lwd=2)
+    
+    # take clipped raster and reproject in WGS84 for viz
+    allgrps.indiv.raster.clip.wgs84<-projectRaster(allgrps.indiv.raster.clip,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
+    
+    # make into points
+    bb.df.wgs84 <- data.frame(rasterToPoints(allgrps.indiv.raster.clip.wgs84))
+    colnames(bb.df.wgs84)<-c("Longitude","Latitude","Density")
+    
+    # take sqrt of Density to better highlight high use areas
+    bb.df.wgs84$Density[bb.df.wgs84$Density==0]<-NA
+    bb.df.wgs84$Density.n<-sqrt(bb.df.wgs84$Density)
+    
+    
+    A<-ggplot() +
+      geom_raster(data=fortify(bb.df.wgs84)%>%dplyr::filter(Density.n>0.0001), aes(y=Latitude, x=Longitude,fill=Density.n)) +
+      scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="sqrt(Density.n)") +
+      geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
+      geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
+      theme_bw() +
+      coord_equal() +
+      coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(37,48))+
+      theme(axis.title.x = element_text(size=16),
+            axis.title.y = element_text(size=16, angle=90),
+            axis.text.x = element_text(size=8),
+            axis.text.y = element_text(size=8),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
+    
+    B<-ggplot() +
+      geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.5)+
+      geom_path(data=tracks_filt%>%
+                  filter(timegrp==grp.ids[[h]]),
+                aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
+      geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
+      theme_bw() +
+      coord_equal() +
+      coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(37,48))+
+      theme(axis.title.x = element_text(size=16),
+            axis.title.y = element_text(size=16, angle=90),
+            axis.text.x = element_text(size=8),
+            axis.text.y = element_text(size=8),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank())
+    
+    plotAB<-gridExtra::grid.arrange(A,B,ncol=2)
+    ggsave(plotAB,filename = paste0(dir,"species/",species,"/",grp.ids[h],"_",species,"_",clipper_list$clipperName,".png"),width=10,dpi = 300)
+    
+  }
 }
+
 
 
 wrap360 = function(lon) {
