@@ -1329,8 +1329,8 @@ sta_quickplot<-function(bbgroups,
       geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.5)+
       geom_path(data=tracks_filt%>%
                   filter(timegrp==grp.ids[[h]]),
-                aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
-      geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
+                aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.4)+
+      geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.1)+
       theme_bw() +
       coord_equal() +
       coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(37,48))+
