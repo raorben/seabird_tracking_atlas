@@ -243,16 +243,6 @@ track_prep_filter<-function(species,
     #### filter data using sdafilter [set max speed to equivalent to vmax]
     track$cfilter<- sdafilter (track$lat1, track$lon1, track$utc, track$lc, vmax, ang, distlim)
     
-    #### plots retained SDA points on plot in blue	
-    Track.Plots[[i]]<-ggplot()+
-      geom_path(data=trackdups[trackdups$filtered!="dup",],aes(x=wrap360(lon1),y=lat1),color="lightgrey")+
-      geom_path(data=track[which(track$cfilter=="not"),],aes(x=wrap360(lon1),y=lat1),color="blue")+
-      geom_point(data=track[1,],aes(x=wrap360(lon1),y=lat1),color="green", cex=1.3)+
-      geom_point(data=track[nrow(track),],aes(x=wrap360(lon1),y=lat1),color="red")+
-      geom_text(data=track,aes(x=max(wrap360(lon1)),y=max(lat1)),label=((meta$animal_id[i])))+
-      xlab("Longitude")+
-      ylab("Latitude")+
-      theme_classic()
     
     #### remove low quality endlocation records accepted by Fritas filter
     track$filtered[(track$cfilter == "end_location" & track$lc <= -2)]="end_location_rem" ## -2 = LC B
@@ -263,6 +253,17 @@ track_prep_filter<-function(species,
     
     retained <- sum(track$keeps)
     filtered<- (length(track[,1]) - sum(track$keeps))
+    
+    #### plots retained SDA points on plot in blue	
+    Track.Plots[[i]]<-ggplot()+
+      geom_path(data=trackdups[trackdups$filtered!="dup",],aes(x=wrap360(lon1),y=lat1),color="lightgrey")+
+      geom_path(data=track[which(track$keeps==1),],aes(x=wrap360(lon1),y=lat1),color="blue")+
+      geom_point(data=track[1,],aes(x=wrap360(lon1),y=lat1),color="green", cex=1.3)+
+      geom_point(data=track[nrow(track),],aes(x=wrap360(lon1),y=lat1),color="red")+
+      geom_text(data=track,aes(x=max(wrap360(lon1)),y=max(lat1)),label=((meta$animal_id[i])))+
+      xlab("Longitude")+
+      ylab("Latitude")+
+      theme_classic()
     
     #### screen output		
     #print(c("TrackLengthOrig",TrackLengthOrig,"Tracklength_clipped",Tracklength_clipped,
@@ -1265,7 +1266,9 @@ sta_quickplot<-function(bbgroups,
                         clipper_list=clipper_list,
                         dir,
                         species,
-                        tracks_filt=tracks_filt){
+                        tracks_filt=tracks_filt,
+                        xlim=c(-130,-121),
+                        ylim=c(37,49)){
   
   
   require(ggplot2)
@@ -1317,7 +1320,7 @@ sta_quickplot<-function(bbgroups,
       geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
       theme_bw() +
       coord_equal() +
-      coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(37,48))+
+      coord_fixed(ratio=1.7,xlim = xlim,ylim=ylim)+
       theme(axis.title.x = element_text(size=16),
             axis.title.y = element_text(size=16, angle=90),
             axis.text.x = element_text(size=8),
@@ -1333,7 +1336,7 @@ sta_quickplot<-function(bbgroups,
       geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.1)+
       theme_bw() +
       coord_equal() +
-      coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(37,48))+
+      coord_fixed(ratio=1.7,xlim = xlim,ylim=ylim)+
       theme(axis.title.x = element_text(size=16),
             axis.title.y = element_text(size=16, angle=90),
             axis.text.x = element_text(size=8),
