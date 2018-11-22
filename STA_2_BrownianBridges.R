@@ -153,6 +153,19 @@ sta_quickplot(bbgroups,
               dir,
               species)
 
+#summary of data inside polygon
+idsinpoly<-unique(tracksums.out$uniID)
+
+#need to match ids with metadata table
+(ids<-vapply(strsplit(idsinpoly, "_", fixed = TRUE), "[", "", 1))
+meta$tag_id
+
+meta%>%dplyr::filter(species==sp)%>%filter(tag_id %in% ids)%>%
+  group_by(deploy_year,deploy_site,collab1_point_contact_name)%>%
+  dplyr::summarize(n_birds=n_distinct(tag_id))
+
+
+
 #keeping this in the script for easy editing 
 sta_quickplot<-function(bbgroups,
                         clipper_list=clipper_list,
