@@ -118,6 +118,8 @@ track_prep_filter<-function(species,
     
     #### read in track
     track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
+    track$collab1_point_contact_name<-meta$collab1_point_contact_name
+    track$deploy_site<-meta$deploy_site
     #print ('Total rows')
     #track$utc<-as.character(track$utc)
     TrackLengthOrig<-(length (track[,1]))
@@ -170,6 +172,8 @@ track_prep_filter<-function(species,
       t1$utc<-meta$datetime_deploy_UTC[i]
       t1$lat1<-as.numeric(meta$lat_deploc[i])
       t1$lon1<-as.numeric(meta$lon_deploc[i])
+      t1$collab1_point_contact_name<-meta$collab1_point_contact_name
+      t1$deploy_site<-meta$deploy_site
       track<-rbind(t1,track)
       rm(t1)
       TrackLength_ends_added<-TrackLength_ends_added+1
@@ -186,6 +190,8 @@ track_prep_filter<-function(species,
       t2$utc<-meta$datetime_end_track_UTC[i]
       t2$lat1<-as.numeric(meta$lat_end[i])
       t2$lon1<-as.numeric(meta$lon_end[i])
+      t2$collab1_point_contact_name<-meta$collab1_point_contact_name
+      t2$deploy_site<-meta$deploy_site
       track<-rbind(track,t2)
       rm(t2)
       TrackLength_ends_added<-TrackLength_ends_added+1
@@ -805,7 +811,7 @@ polygrid_forsf_prep<-function(clipperName=CN,
   require(rgdal)
   require(rgeos)
   require(stringr)
-  
+  require(sf)
   
   # read in polygon
   clipper <- readRDS(paste0(dir,"polygons/",clipperfileName)) # clipper comes in as unprojected WGS84
@@ -829,8 +835,12 @@ polygrid_forsf_prep<-function(clipperName=CN,
     p1<-p1 + plot(clipperBuff_proj, add=T)
   }
   
+  # create a buffer for the grid for the kernal densities
+  buff_kd_Dist<-200*1000 # convert km to m
+  clipperBuff_projKD<-gBuffer(clipper_proj, byid=F, id=NULL, width=buff_kd_Dist, quadsegs=5, capStyle="ROUND", joinStyle="ROUND", mitreLimit=1.0)
+  
   #### get extent of clipper buffer and make grid for KD analysis
-  ext<-extent(clipperBuff_proj[1,1])
+  ext<-extent(clipperBuff_projKD[1,1])
   grid.lon <- c(ext@xmin, ext@xmin, ext@xmax, ext@xmax)
   grid.lat <- c(ext@ymax, ext@ymin, ext@ymin, ext@ymax)
   grid.loc <- SpatialPoints(cbind(grid.lon, grid.lat))
@@ -1048,7 +1058,7 @@ bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:
   
   #summarize time tracked
   tracksums.out<-tracks1%>%
-    group_by(uniID,seg_id)%>%
+    group_by(uniID,seg_id,deploy_site,collab1_point_contact_name)%>%
     summarise(date.end=max(date_time),date.begin=min(date_time))%>%
     mutate(days=as.numeric(difftime(date.end,date.begin,units = c("days"))))
     

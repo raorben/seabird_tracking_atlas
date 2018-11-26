@@ -3,6 +3,7 @@ library(SDMTools)
 library(raster)
 library(ggplot2)
 library(gridExtra)
+library(sf)
 
 rm(list=ls())
 
