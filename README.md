@@ -24,7 +24,7 @@ This script takes shapefiles, reprojects them, makes polygons, and associated gr
   (add habitat - onland vs. at sea here)
 
 EEZtoPoly.R 
-  Doesn't exist yet. Will be used to take EEZs and turn them into polygons within R. 
+  Used to take EEZs and turn them into polygons within R. 
   
 STA_Functions.R
   Where all the actual work happens. 
