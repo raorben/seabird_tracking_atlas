@@ -118,8 +118,8 @@ track_prep_filter<-function(species,
     
     #### read in track
     track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
-    track$collab1_point_contact_name<-meta$collab1_point_contact_name
-    track$deploy_site<-meta$deploy_site
+    track$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
+    track$deploy_site<-meta$deploy_site[i]
     #print ('Total rows')
     #track$utc<-as.character(track$utc)
     TrackLengthOrig<-(length (track[,1]))
@@ -172,8 +172,8 @@ track_prep_filter<-function(species,
       t1$utc<-meta$datetime_deploy_UTC[i]
       t1$lat1<-as.numeric(meta$lat_deploc[i])
       t1$lon1<-as.numeric(meta$lon_deploc[i])
-      t1$collab1_point_contact_name<-meta$collab1_point_contact_name
-      t1$deploy_site<-meta$deploy_site
+      t1$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
+      t1$deploy_site<-meta$deploy_site[i]
       track<-rbind(t1,track)
       rm(t1)
       TrackLength_ends_added<-TrackLength_ends_added+1
@@ -190,8 +190,8 @@ track_prep_filter<-function(species,
       t2$utc<-meta$datetime_end_track_UTC[i]
       t2$lat1<-as.numeric(meta$lat_end[i])
       t2$lon1<-as.numeric(meta$lon_end[i])
-      t2$collab1_point_contact_name<-meta$collab1_point_contact_name
-      t2$deploy_site<-meta$deploy_site
+      t2$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
+      t2$deploy_site<-meta$deploy_site[i]
       track<-rbind(track,t2)
       rm(t2)
       TrackLength_ends_added<-TrackLength_ends_added+1

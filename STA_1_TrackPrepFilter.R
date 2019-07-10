@@ -1,6 +1,8 @@
 library(gridExtra)
 library(dplyr)
 library(reshape2)
+library(ggplot2)
+library(argosfilter)
 
 # DATA PREPRUN SCRIPT: COMU
 # data are from Argos PTT deployments 2012-2017
@@ -13,12 +15,14 @@ rm(list=ls())
 species="COMU"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
-if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+#if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
+#if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
+if(Sys.info()[4]=="Rachaels-MacBook-Air.local") {dir<-"/Users/rachaelorben/Documents/Researchf/SeabirdTrackingAtlas/"}
+if(Sys.info()[4]=="Rachaels-MacBook-Air.local") {gitdir<-"/Users/rachaelorben/git_repros/seabird_tracking_atlas/"}
+/Users/rachaelorben/Documents/Researchf/SeabirdTrackingAtlas
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
-
 
 
 source(paste0(gitdir,"STA_Functions.R"))
