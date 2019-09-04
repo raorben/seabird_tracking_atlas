@@ -12,7 +12,7 @@ library(argosfilter)
 # clear all
 rm(list=ls())
 
-sp="COMU"
+sp="PFSH"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
