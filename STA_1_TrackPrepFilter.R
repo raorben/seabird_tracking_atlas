@@ -1,6 +1,8 @@
 library(gridExtra)
 library(dplyr)
 library(reshape2)
+library(ggplot2)
+library(argosfilter)
 
 # DATA PREPRUN SCRIPT: COMU
 # data are from Argos PTT deployments 2012-2017
@@ -10,7 +12,7 @@ library(reshape2)
 # clear all
 rm(list=ls())
 
-species="COMU"
+sp="COMU"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
@@ -18,7 +20,6 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
-
 
 
 source(paste0(gitdir,"STA_Functions.R"))
@@ -30,16 +31,16 @@ meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",",
 parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 
-meta%>%dplyr::filter(species=="COMU")%>%
+meta%>%dplyr::filter(species==sp)%>%
   group_by(year,deploy_site,collab1_point_contact_name)%>%
   dplyr::summarize(n_birds=n_distinct(tag_id),minDate=min(datetime_deploy_UTC))
 
 #Tracks are single files file name matching one in the meta file. Saved in "dir.in".  
 #Output is a list, obj 1 is the concatinated data, obj 2 is a list of plots, obj 3 is a table of the filtering info
-tf_out<-track_prep_filter(species=species,
+tf_out<-track_prep_filter(species=sp,
                           year=NA,
                           dir=dir,
-                          dir.in=paste0(dir,"species/COMU/1_DataIn"),
+                          dir.in=paste0(dir,"species/",sp,"/1_DataIn"),
                           tagtype="ptt", 
                           lcerrref="costa",
                           parameters=parameters,
@@ -50,7 +51,7 @@ tf_plots<-tf_out$tf_plot #list of ggplots showing prefiltered and filtered locat
 tf_info<-tf_out$tf_info
 
 # Makes Quality Control plots for Freitas Filter --------------------------
-pdf(paste0(dir,"species/",species,"/QCplots_",species,"_trackfilter.pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_trackfilter.pdf"), onefile = TRUE)
 for(i in 1:length(tf_plots)){
   top.plot <-tf_plots[[i]]
   grid.arrange(top.plot)
@@ -68,7 +69,7 @@ head(filt_error)
 tail(filt_error) #wacky things at bottom are mean, sd, and number of birds
 
 save(tracks_filt,tf_info,filt_sum,filt_error, 
-     file = paste0(dir,"species/",species,"/",species,"_trackfilter.RData"))
+     file = paste0(dir,"species/",sp,"/",sp,"_trackfilter.RData"))
 
 
 #Optional output formats not used in the next step (.RData file is used instead)
