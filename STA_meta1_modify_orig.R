@@ -18,6 +18,11 @@
   #chick foraging_datetime_start_UTC, Duration, nb_locs, Species_num, Status_numb, Sex_num, Best_track, 
   #Repeat, Complete_track, Loc_num, Track_ID
 
+#FIX crazy datetime formating
+
+# clear all
+rm(list=ls())
+
 library(dplyr)
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
@@ -32,6 +37,7 @@ if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 PTT_metadata_mod <- read.csv(paste0(dir,'/supporttables/PTT_metadata.csv'),
                              na.strings=c("NA","NaN", " ",""),# places a NA in all cells with all these cases
                              stringsAsFactors=FALSE)#gets rid of factors
+
 #PTT_metadata_mod <- as_tibble(PTT_metadata_mod)
 head(PTT_metadata_mod)
 str(PTT_metadata_mod)
@@ -73,6 +79,18 @@ names(meta)
 head(meta)
 
 meta$Duty_cycle<-as.character(meta$Duty_cycle)
+
+meta$datetime_deploy_UTCa<-mdy_hm(meta$datetime_deploy_UTC)
+meta$datetime_deploy_UTCa[31:59]<-mdy_hm(paste0(meta$datetime_deploy_UTC," 00:01"))[31:59]
+meta$datetime_deploy_UTC<-meta$datetime_deploy_UTCa
+meta<-meta%>%dplyr::select(-datetime_deploy_UTCa)
+
+meta$datetime_start_track_UTC<-mdy_hm(meta$datetime_start_track_UTC)
+meta$datetime_recover_UTC<-mdy_hm(meta$datetime_recover_UTC)
+meta$datetime_end_track_UTC<-mdy_hm(meta$datetime_end_track_UTC)
+
+solmeta<-meta%>%filter(deploy_year==2015 & deploy_site=="Yaquina Head")
+meta<-meta%>%filter(deploy_site!="Yaquina Head") #removes 2015 Yaquina Data, added back in later
 
 # #Add a column that concatinates various columns to create a unique ID
 # meta$STA_unqID <- paste(meta$band_no, meta$animal_id, 

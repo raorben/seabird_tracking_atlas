@@ -2,6 +2,10 @@ library(readxl)
 library(dplyr)
 library(lubridate)
 
+# clear all
+rm(list=ls())
+
+
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
@@ -9,7 +13,7 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
-meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-09-05_662birds.rda"))
+meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-09-05_652birds.rda"))
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
 sol<-read.csv(paste0(dir,"supporttables/SOL_CaptureData.csv"),
@@ -69,8 +73,6 @@ solmeta$CPF_YN<-NA
 solmeta$CPF_YN[solmeta$species=="COMU"]<-"N"
 solmeta$CPF_YN[solmeta$species=="WEGU"]<-"Y"
 
-solmeta$datetime_deploy_UTC<-as.character(solmeta$datetime_deploy_UTC)
-
 solmeta$argos_id[solmeta$location_type=="GPS"]<-NA
 
 #puts in unique deployment ID for Seabird Telemetry Atlas
@@ -107,15 +109,17 @@ solmeta$datetime_end_track_UTC<-solmeta$Deployment_End_byhand_GMT
 solmeta$datetime_end_track_UTC[solmeta$Tag_brand.y!="Ornitella" & solmeta$Tag_brand.y!="CATS"& solmeta$Tag_brand.y!="WildlifeComputers"]<-NA
 unique(solmeta$Tag_brand.y)
 
-solmeta$datetime_recover_UTC<-as.character(solmeta$datetime_recover_UTC)
-solmeta$datetime_end_track_UTC<-as.character(solmeta$datetime_end_track_UTC)
-
 #identifies which WEGU were not recapture, no loc data, not location data with UVA tags
 solmeta$loc_data<-1
 solmeta$loc_data[solmeta$recaptured=="N"]<-0
 solmeta$loc_data[solmeta$Tag_brand.x=="University of Amsterdam"]<-0
 
 solmeta$tag_sensors[solmeta$Tag_brand.x=="TELONICS"]<-"Argos wetcounter"
+
+#adds in file names for the 2015 COMU
+solmeta$file_name<-NA
+solmeta$file_name[solmeta$deploy_year==2015 | solmeta$deploy_site=="Yaquina Head"]<-solmeta$argos_id[solmeta$deploy_year==2015 | solmeta$deploy_site=="Yaquina Head"]
+solmeta$file_name<-as.character(solmeta$file_name)
 
 #remove unwanted columns
 solmeta<-solmeta%>%dplyr::select(-OID,-Deploy.Date_gmt,-Deploy.Hour_gmt,-Deploy.Min_gmt,

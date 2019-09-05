@@ -1,5 +1,8 @@
 library(dplyr)
 
+# clear all
+rm(list=ls())
+
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
@@ -22,6 +25,8 @@ stal$location_type<-"GPS"
 
 stal$deploy_year<-year(mdy_hm(stal$datetime_deploy_UTC))
 stal$tag_sensors<-"none"
+
+stal$datetime_deploy_UTC<-mdy_hm(stal$datetime_deploy_UTC)
 
 meta<-bind_rows(meta,stal%>%dplyr::select(-year,-observer))
 names(meta)
