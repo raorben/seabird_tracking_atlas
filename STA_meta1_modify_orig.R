@@ -92,13 +92,22 @@ meta$datetime_end_track_UTC<-mdy_hm(meta$datetime_end_track_UTC)
 solmeta<-meta%>%filter(deploy_year==2015 & deploy_site=="Yaquina Head")
 meta<-meta%>%filter(deploy_site!="Yaquina Head") #removes 2015 Yaquina Data, added back in later
 
+a<-meta%>%filter(species=="SOSH")%>%dplyr::select(STA_id, species,deploy_year,file_name)%>%
+  mutate(fn=paste0(species,"_",deploy_year,"_CCS_",file_name))
+
+for (i in 1:nrow(a)){
+  Id<-as.character(a$STA_id[i])
+  idx<-which(meta$STA_id==Id)
+  meta$file_name[idx]<-a$fn[i]
+}
+
 # #Add a column that concatinates various columns to create a unique ID
 # meta$STA_unqID <- paste(meta$band_no, meta$animal_id, 
 #                         meta$tag_id, meta$species, meta$deploy_year, sep = "_")
 # names(meta)
 # head(meta)
 
-dt<-Sys.Date()
+dt<-Sys.Date()-1
 
 #save STA_rcode_metadata as a .rda, adds date to file name so most recent verions is obvious
 #adds this to Github to accessable for all. This might get a bit cumbersome, but I am not sure of other options 

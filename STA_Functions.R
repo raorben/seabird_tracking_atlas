@@ -75,6 +75,7 @@ track_prep_filter<-function(species,
   #functions needed
   require(argosfilter)
   require(ggplot2)
+  require(lubridate)
   
   paramwant<-subset(parameters,(spp==species & tag==tagtype))
   
@@ -84,6 +85,8 @@ track_prep_filter<-function(species,
   #print(paste("angles = ",ang))
   distlim <-  c(paramwant$distlim1,paramwant$distlim2)
   #print(paste("distance limit = ",distlim))
+  
+  meta$datetime_deploy_UTC<-ymd_hms(meta$datetime_deploy_UTC)
   
   # lcerrors
   if(lcerrref=="costa"){
@@ -100,35 +103,41 @@ track_prep_filter<-function(species,
     meta<-meta[meta$species==species & meta$year==year & meta$loc_data==1,]
   }
   
-  meta<-transform(meta, 
-                  datetime_deploy_UTC = as.POSIXct(datetime_deploy_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
-                  datetime_recover_UTC = as.POSIXct(datetime_recover_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
-                  datetime_start_track_UTC = as.POSIXct(datetime_start_track_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
-                  datetime_end_track_UTC = as.POSIXct(datetime_end_track_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"))
+  #meta<-transform(meta, 
+  #                datetime_deploy_UTC = as.POSIXct(datetime_deploy_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
+  #                datetime_recover_UTC = as.POSIXct(datetime_recover_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
+  #                datetime_start_track_UTC = as.POSIXct(datetime_start_track_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"),
+  #                datetime_end_track_UTC = as.POSIXct(datetime_end_track_UTC, tz = "GMT", format = "%m/%d/%Y %H:%M"))
   
   Track.Plots<-vector("list",length(meta[,1]))
+  
   INFO<-data.frame()
   Tracks<-NULL
   # loop through birds
   for (i in 1:length(meta[,1])) {			  
     animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
-    ptt_deploy_id <- meta$ptt_deploy_id[i]
+    STA_id <- meta$STA_id[i]
     #print(animal.id)
     
     #### read in track
-    track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
-
-    track$collab1_point_contact_name<-meta$collab1_point_contact_name[meta$animal_id==animal.id]
-    track$deploy_site<-meta$deploy_site[meta$animal_id==animal.id]
+    file1<-list.files(path = dir.in,recursive = TRUE,pattern=file_name)
+    #option one uses exact match with metadata
+    if (stringr::str_detect(file_name,file1)==TRUE){track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),
+                                             header=T, sep=",",strip.white=T,stringsAsFactors = F)
+    }else {track <- read.table(paste(dir.in,"/",file1,sep = ""),
+                          header=T, sep=",",strip.white=T,stringsAsFactors = F)}
+  
+    track$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
+    track$deploy_site<-meta$deploy_site[i]
 
     #print ('Total rows')
     #track$utc<-as.character(track$utc)
     TrackLengthOrig<-(length (track[,1]))
     #print (length (track[,1]))
     #allows for two different styles of datetimes in logger files:
-    if (grepl(track$utc[1],pattern="/")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "GMT", format = "%m/%d/%Y %H:%M"))
-    if (grepl(track$utc[1],pattern="-")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "GMT", format = "%Y-%m-%d %H:%M:%S"))
+    if (grepl(track$utc[1],pattern="/")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "UTC", format = "%m/%d/%Y %H:%M"))
+    if (grepl(track$utc[1],pattern="-")==TRUE) track<-transform(track, utc= as.POSIXct(utc, tz = "UTC", format = "%Y-%m-%d %H:%M:%S"))
     
     #### cut start/end track based on metadata and insert deployment/recovery locations if specified in metadata
     
@@ -152,7 +161,7 @@ track_prep_filter<-function(species,
       track<-track[(track$utc<=meta$datetime_end_track_UTC[i]),]
     }
     
-    track$year<-rep(meta$year[i],length(track[,1]))
+    track$year<-rep(meta$deploy_year[i],length(track[,1]))
     track$ptt<-rep(meta$tag_id[i],length(track[,1]))
     
     Tracklength_clipped<-length(track[,1])
@@ -164,7 +173,7 @@ track_prep_filter<-function(species,
     # does this by adding the first line again, making all values NA, then adds key info back in
     if((!is.na(meta$incl_deploy_loc[i])) & (meta$incl_deploy_loc[i]!=0)) {
       t1=track[1,]
-      t1[1,]<-NA
+      #t1[1,]<-NA
       t1$lc<-4
       #t1$program<-track$program[1]
       t1$tag_id<-track$tag_id[1]
@@ -175,8 +184,8 @@ track_prep_filter<-function(species,
       t1$lat1<-as.numeric(meta$lat_deploc[i])
       t1$lon1<-as.numeric(meta$lon_deploc[i])
 
-      t1$collab1_point_contact_name<-meta$collab1_point_contact_name[meta$animal_id==animal.id]
-      t1$deploy_site<-meta$deploy_site[meta$animal_id==animal.id]
+      t1$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
+      t1$deploy_site<-meta$deploy_site[i]
 
       track<-rbind(t1,track)
       rm(t1)
@@ -253,12 +262,13 @@ track_prep_filter<-function(species,
     track<-track[track$filtered!="dup",]
     
     #### filter data using sdafilter [set max speed to equivalent to vmax]
+    track<-track%>%filter(is.na(utc)==FALSE)
     track$cfilter<- sdafilter (track$lat1, track$lon1, track$utc, track$lc, vmax, ang, distlim)
     
     
     #### remove low quality endlocation records accepted by Fritas filter
     track$filtered[(track$cfilter == "end_location" & track$lc <= -2)]="end_location_rem" ## -2 = LC B
-    track$ptt_deploy_id <- rep(meta$ptt_deploy_id[i], length(track[,1]))
+    track$STA_id <- rep(meta$STA_id[i], length(track[,1]))
     
     #### create vector for points kept
     track$keeps <- (as.numeric((track$cfilter=="not") | (track$cfilter=="end_location")) * (1-as.numeric(track$filtered=="end_location_rem")))
@@ -272,7 +282,8 @@ track_prep_filter<-function(species,
       geom_path(data=track[which(track$keeps==1),],aes(x=wrap360(lon1),y=lat1),color="blue")+
       geom_point(data=track[1,],aes(x=wrap360(lon1),y=lat1),color="green", cex=1.3)+
       geom_point(data=track[nrow(track),],aes(x=wrap360(lon1),y=lat1),color="red")+
-      geom_text(data=track,aes(x=max(wrap360(lon1)),y=max(lat1)),label=((meta$animal_id[i])))+
+      geom_text(data=track,aes(x=max(wrap360(lon1)-.5),y=max(lat1)),label=((meta$animal_id[i])))+
+      geom_text(data=track,aes(x=max(wrap360(lon1)-.5),y=max(lat1-1)),label=((meta$STA_id[i])))+
       xlab("Longitude")+
       ylab("Latitude")+
       theme_classic()
@@ -284,7 +295,7 @@ track_prep_filter<-function(species,
     #        dupremoved,"filtered",filtered,
     #        "retained",retained))
    
-    info<-data.frame(animal.id,ptt_deploy_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
+    info<-data.frame(animal.id,STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
     info$animal.id<-as.character(info$animal.id)
@@ -293,6 +304,15 @@ track_prep_filter<-function(species,
     # bind all info
     INFO<-bind_rows(INFO,info) #was rbind_fill()
     rm(info)
+    
+    #for tags without extra sensors this adds that column in
+    #for tags without extra sensors this adds that column in
+    if("sensors.1" %in% names(track)==TRUE){
+      track <- track%>%dplyr::select(-sensors.1)
+    }
+    if("sensors" %in% names(track)==FALSE){
+      track$sensors<-NA
+    }
     
     track$sensors<-as.character(track$sensors)
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
@@ -337,7 +357,7 @@ track_prep<-function(species,
   for (i in 1:length(meta[,1])) {			  
     animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
-    ptt_deploy_id <- meta$ptt_deploy_id[i]
+    STA_id <- meta$STA_id[i]
     #print(animal.id)
     
     #### read in track
@@ -416,7 +436,7 @@ track_prep<-function(species,
     }
   
     
-    info<-data.frame(animal.id,ptt_deploy_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
+    info<-data.frame(animal.id,STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
     info$animal.id<-as.character(info$animal.id)
@@ -494,7 +514,7 @@ track_filter<-function(species,
   for (i in 1:length(meta[,1])) {			  
     animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
-    ptt_deploy_id <- meta$ptt_deploy_id[i]
+    STA_id <- meta$STA_id[i]
     #print(animal.id)
     
     #### read in track
@@ -634,7 +654,7 @@ track_filter<-function(species,
     
     #### remove low quality endlocation records accepted by Fritas filter
     track$filtered[(track$cfilter == "end_location" & track$lc <= -2)]="end_location_rem" ## -2 = LC B
-    track$ptt_deploy_id <- rep(meta$ptt_deploy_id[i], length(track[,1]))
+    track$STA_id <- rep(meta$STA_id[i], length(track[,1]))
     
     #### create vector for points kept
     track$keeps <- (as.numeric((track$cfilter=="not") | (track$cfilter=="end_location")) * (1-as.numeric(track$filtered=="end_location_rem")))
@@ -642,7 +662,7 @@ track_filter<-function(species,
     retained <- sum(track$keeps)
     filtered<- (length(track[,1]) - sum(track$keeps))
     
-    info<-data.frame(animal.id,ptt_deploy_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
+    info<-data.frame(animal.id,STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
     info$animal.id<-as.character(info$animal.id)
@@ -670,9 +690,9 @@ tf_filt_sum<-function(tracks){
   require(reshape2)
   #INPUTS:
   #tracks is any Freitas filtered track file with the columns
-  #'lc','ptt_deploy_id','keeps'
+  #'lc','STA_id','keeps'
   
-  tracks$ptt_deploy_id<-as.factor(tracks$ptt_deploy_id)
+  tracks$STA_id<-as.factor(tracks$STA_id)
   tracks$lc<-as.factor(tracks$lc)
   tracks$keeps<-as.character(as.logical(tracks$keeps))
   tracks$keeps[tracks$keeps=="TRUE"]<-"retained"
@@ -681,16 +701,16 @@ tf_filt_sum<-function(tracks){
   # organize data by ptt
   # melt the data
   tracks$meas <- rep(1, length(tracks[,1]))
-  tracks.m<-melt(tracks, c("ptt_deploy_id", "lc","filtered","keeps"),"meas")
+  tracks.m<-melt(tracks, c("STA_id", "lc","filtered","keeps"),"meas")
   
   # cast the data (make the pivot)
-  filter.results<-dcast(tracks.m, ptt_deploy_id + lc ~ keeps + value , sum)
+  filter.results<-dcast(tracks.m, STA_id + lc ~ keeps + value , sum)
   return(filter.results)}
 
 
 tf_filt_error<-function(tracks,filt_sum,lcerrors,lcerrref="costa"){
   #INPUTS:
-  #tracks is any Freitas filtered track file with the columns 'lc','ptt_deploy_id','keeps'
+  #tracks is any Freitas filtered track file with the columns 'lc','STA_id','keeps'
   #data from of location errors
   #lcerrref=which errors to use (only costa and douglas as options currently)
   
@@ -708,8 +728,8 @@ tf_filt_error<-function(tracks,filt_sum,lcerrors,lcerrref="costa"){
   
   indiv.error$error.prod<-lcerr*indiv.error$retained_1
   
-  indiv.error.m<-melt(indiv.error, id=c("ptt_deploy_id", "lc", "retained_1", "error.prod"), measure = c("error.prod", "retained_1"))
-  indiv.error.results<-dcast(indiv.error.m, ptt_deploy_id ~ variable, sum)
+  indiv.error.m<-melt(indiv.error, id=c("STA_id", "lc", "retained_1", "error.prod"), measure = c("error.prod", "retained_1"))
+  indiv.error.results<-dcast(indiv.error.m, STA_id ~ variable, sum)
   
   indiv.error.results$mean.error.track<-indiv.error.results$error.prod/indiv.error.results$retained_1
   ## get mean error for the dataset (because the PTT is a factor, the leading zeros throw an error that should be ignored)
@@ -880,7 +900,7 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
   clipperName<-CLIPPERS$clipperName
   rast<-CLIPPERS$rast
   
-  all_tracks$utc<-as.POSIXct(format(strptime(as.character(all_tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "GMT")
+  all_tracks$utc<-as.POSIXct(format(strptime(as.character(all_tracks$utc), "%Y-%m-%d %H:%M:%S"), "%Y-%m-%d %H:%M:%S"), tz = "UTC")
   
   ids<-unique(all_tracks$uniID)
   Clipper.Plots<-vector("list",length(ids))
@@ -1052,7 +1072,7 @@ bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:
   tracks<-cbind(tracks,coords)
   
   # CREATE TRACKS USING YOUR TIME AND LOCATION DATA FOR KERNELBB ANALYSIS
-  # catchall to remove duplicate datetimes within ptt_deploy_id
+  # catchall to remove duplicate datetimes within STA_id
   tracks1 <-  tracks %>% distinct(uniID,date_time,.keep_all = T) %>%
                   arrange(uniID,date_time)
   

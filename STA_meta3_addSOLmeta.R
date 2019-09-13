@@ -113,6 +113,7 @@ unique(solmeta$Tag_brand.y)
 solmeta$loc_data<-1
 solmeta$loc_data[solmeta$recaptured=="N"]<-0
 solmeta$loc_data[solmeta$Tag_brand.x=="University of Amsterdam"]<-0
+solmeta$loc_data[solmeta$argos_id=="160661"]<-0
 
 solmeta$tag_sensors[solmeta$Tag_brand.x=="TELONICS"]<-"Argos wetcounter"
 
@@ -120,6 +121,10 @@ solmeta$tag_sensors[solmeta$Tag_brand.x=="TELONICS"]<-"Argos wetcounter"
 solmeta$file_name<-NA
 solmeta$file_name[solmeta$deploy_year==2015 | solmeta$deploy_site=="Yaquina Head"]<-solmeta$argos_id[solmeta$deploy_year==2015 | solmeta$deploy_site=="Yaquina Head"]
 solmeta$file_name<-as.character(solmeta$file_name)
+
+solmeta%>%filter(species=="COMU")%>%
+  filter(deploy_year>2015)%>%
+  dplyr::select(deploy_year,tag_id,animal_id,argos_id)
 
 #remove unwanted columns
 solmeta<-solmeta%>%dplyr::select(-OID,-Deploy.Date_gmt,-Deploy.Hour_gmt,-Deploy.Min_gmt,

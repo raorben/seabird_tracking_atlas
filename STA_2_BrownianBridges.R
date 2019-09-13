@@ -18,7 +18,10 @@ rm(list=ls()) #empty environment
 
 
 sp<-"COMU"
-
+sp<-"PFSH"
+sp<-"SOSH"
+sp<-"NOFU"
+sp<-"BFAL"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
@@ -31,7 +34,7 @@ source(paste0(gitdir,"STA_Functions.R"))
 # give a time variable of "all"
 
 # Read in Clipper ---------------------------------------------------------
-clipperName<-"PACSEA_convhull_All_coastclip"
+clipperName<-"PNW_wUSEEZ"
 
 # read in list of all potential clipper files
 # polys are stored as WGS84 and then projected in MakeClippers.R
@@ -44,11 +47,11 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/PTT_metadata.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-09-05_781birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
 meta<-meta[meta$species==sp,]
-  meta%>%group_by(species,year, deploy_site)%>%summarise(n=n())
+  meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
 
-  # reads in Frietas filtered tracking data for species
+# reads in Frietas filtered tracking data for species
 # get speed value used in argosfilter::sdafilter
 load(file=paste0(dir,"species/",sp,"/",sp,"_trackfilter.RData"))
 (speed<-unique(tf_info$vmax))
@@ -56,9 +59,12 @@ remove(tf_info); remove(filt_sum); remove(filt_error)
 
 ## #########################################################################
 # Unique ID for dataset and grouping
-tracks_filt$uniID<-paste0(tracks_filt$ptt_deploy_id,"_",year(tracks_filt$utc))
+tracks_filt$uniID<-paste0(tracks_filt$STA_id,"_",year(tracks_filt$utc))
 unique(tracks_filt$uniID)
 length(unique(tracks_filt$uniID))
+
+frags<-tracks_filt%>%group_by(uniID)%>%summarise(n=n())%>%filter(n<3)
+tracks_filt<-tracks_filt%>%filter(!uniID %in% frags$uniID)
 
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
@@ -68,6 +74,7 @@ tracks_inpoly<-in_poly(all_tracks=tracks_filt,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
 clipper.plots<-tracks_inpoly$Clipper.Plots
+tracks_inpoly.df<-tracks_inpoly$tracks.out #all locations w/ in-out poly
 
 # Makes Quality Control plots for PolygonClip --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,".pdf"), onefile = TRUE)
@@ -89,7 +96,7 @@ length(unique(tracks_seg_df$seg_id))
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
-speed<-45
+#speed<-45
 segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
@@ -119,10 +126,12 @@ dev.off()
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
 
 #set time grouping variable (year, season, month)
-#needs to be the same used for segmentation if individuals span groups
-  
+#needs to be the same used for UniID segmentation if individuals span groups
+
+#year:  
 tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
-tracksums.out$timegrp<-"year"
+#all:
+#tracksums.out$timegrp<-"all"
 
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
@@ -149,11 +158,16 @@ bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_gr
 
 
 # Plot Rasters  ------------------------------------------------------------
+#year
+tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
+#all
+#tracks_inpoly.df$timegrp<-"all"
+
 sta_quickplot(bbgroups,
               clipper_list=clipper_list,
               dir,
               species=sp,
-              tracks_seg_df=tracks_seg_df)
+              tracks_inpoly.df)
 
 #summary of data inside polygon
 idsinpoly<-unique(tracksums.out$uniID)
@@ -162,25 +176,32 @@ idsinpoly<-unique(tracksums.out$uniID)
 (ids<-vapply(strsplit(idsinpoly, "_", fixed = TRUE), "[", "", 1))
 meta$tag_id
 
-meta%>%dplyr::filter(species==sp)%>%filter(tag_id %in% ids)%>%
+meta%>%dplyr::filter(species==sp)%>%filter(STA_id %in% ids)%>%
   group_by(deploy_year,deploy_site,collab1_point_contact_name)%>%
   dplyr::summarize(n_birds=n_distinct(tag_id))
 
-
+userdir<-'/Users/rachaelorben/Dropbox/Research/GlobalFishingWatch'
+bathy2<-readRDS(paste0(userdir,"/Analysis/compileddata/Bathymetryforggplot.rda"))
+unwrap360<-function(lon360){
+  lon<-ifelse(lon360 > 180, -360 + lon360, lon360)
+  return(lon)}
+bathy2$lon<-unwrap360(bathy2$V1)
 
 #keeping this in the script for easy editing 
 sta_quickplot<-function(bbgroups,
                         clipper_list=clipper_list,
                         dir,
                         species,
-                        tracks_seg_df){
+                        tracks_inpoly.df){
 
   
   require(ggplot2)
   library(RColorBrewer)
   states<-map_data('state') 
   states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
-
+  w2hr<-map_data('world')
+  w2hr_sub<-w2hr[w2hr$region%in%c("Canada"),]
+  
   #get the clipper ready
   clipper_wgs84<-clipper_list$clipper
   (prjWant<-clipper_list$projWant)
@@ -222,12 +243,13 @@ sta_quickplot<-function(bbgroups,
 A<-ggplot() +
   geom_raster(data=fortify(bb.df.wgs84)%>%dplyr::filter(Density.n>0.0001), aes(y=Latitude, x=Longitude,fill=Density.n)) +
   scale_fill_gradientn(colors=c("#3096C6", "#9EC29F","#F2EE75", "#EE5B2F","#E7292A"),name="Density") +
+  geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
   theme_bw() +
   xlab("Longitude")+
   ylab("Latitude")+
-  coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(39,48))+
+  coord_fixed(ratio=1.7,xlim = c(-130,-121),ylim=c(39,48.3))+
   #guides(fill = guide_colorbar(barwidth = 2, barheight = 10,direction = "vertical"))+
   theme(axis.title.x = element_text(size=16),
         axis.title.y = element_text(size=16, angle=90),
@@ -242,20 +264,25 @@ A<-ggplot() +
         legend.text=element_text(color="white", size=8),
         legend.title = element_text(color="white"))
 
-colourCount = nrow(unique(tracks_filt%>%dplyr::select(tag_id)))+1
+colourCount = nrow(unique(tracks_filt%>%dplyr::select(STA_id)))+1
 getPalette = colorRampPalette(brewer.pal(9, "Set1"))
+
 B<-ggplot() +
-  geom_polygon(data=states_sub,aes((long),lat,group=group),fill="black",color="grey60",size=0.1)+
-  geom_path(data=tracks_filt%>%
-              filter(keeps==1),
-            aes(x=lon1,y=lat1,group=tag_id,color=as.factor(tag_id)),size=0.2)+
+  geom_tile(data=bathy2,aes(x=wrap360(lon),y=V2,fill=Depth))+
+  scale_fill_gradientn(colours = c("grey95", "grey50"),name="Depth") +
+  geom_polygon(data=w2hr_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
+  geom_polygon(data=states_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
+  geom_path(data=tracks_inpoly.df%>%filter(timegrp==names(bbgroups)[h]),
+            aes(x=wrap360(lon1),y=lat1,group=STA_id,color=as.factor(STA_id)),size=0.2)+
   scale_color_manual(values = getPalette(colourCount))+
-  geom_polygon(data=clipper_wgs84,aes(long,lat,group=group),fill="NA",color="black",size=.5)+
-  annotate("text",x=-123.7,y=42.8,label="Bird sample size",color="white",size=5,hjust = 0)+
-  theme_bw() +
+  geom_polygon(data=clipper_wgs84,aes(wrap360(long),lat,group=group),fill="NA",color="black",size=.5)+
+  annotate("text",x=wrap360(-123.7),y=42.8,label="Bird sample size",color="white",size=5,hjust = 0)+
   xlab("Longitude")+
   ylab("Latitude")+
-  coord_fixed(ratio=1.7,xlim = c(-126.5,-121),ylim=c(39,48))+
+  coord_fixed(ratio=1.7,xlim = c(wrap360(-130),wrap360(-121)), ylim=c(39,48.3))+
+  scale_x_continuous(breaks=c(230,232.5,235,237.5),
+                     labels=c("-130.0", "-127.5", "-125.0","-122.5"))+
+  theme_bw() +
   theme(axis.title.x = element_text(size=16),
         axis.title.y = element_text(size=16, angle=90),
         axis.text.x = element_text(size=8),
@@ -264,20 +291,24 @@ B<-ggplot() +
         panel.grid.minor = element_blank(),
         legend.position = "none")
 
-tracks_seg_df$month<-month(tracks_seg_df$utc)
-tracks_seg_df$date<-date(tracks_seg_df$utc)
-birdsMO<-unique(tracks_seg_df%>%dplyr::select("uniID","in_poly","seg_id","date","month","year"))
-birdsMO.dys<-tracks_seg_df%>%group_by(uniID, seg_id,in_poly,year,month,date)%>%
-  summarise(n=n())
-birdsMO.dys1<-birdsMO.dys%>%group_by(in_poly,month)%>%summarise(mean=mean(n),
-                                                                sd=sd(n))
+tracks_inpoly.df$month<-month(tracks_inpoly.df$utc)
+tracks_inpoly.df$date<-date(tracks_inpoly.df$utc)
+
+birdsMO<-unique(tracks_inpoly.df%>%dplyr::select("uniID","timegrp","in_poly","date","month"))
+birdsMO.dys<-tracks_inpoly.df%>%group_by(uniID, timegrp,in_poly,month)%>%
+  summarise(n=n_distinct(date))
+birdsMO.dys1<-birdsMO.dys%>%
+  group_by(in_poly,timegrp,month)%>%
+  summarise(mean=mean(n),sd=sd(n))
+
 sample.size.inset<-ggplot()+
-  geom_bar(data=unique(birdsMO%>%dplyr::select("uniID","year","month","in_poly")), 
+  geom_bar(data=unique(birdsMO%>%filter(timegrp==names(bbgroups)[h])%>%
+                         dplyr::select("uniID","month","in_poly")), 
            aes(x=month, group=in_poly,fill=as.factor(in_poly)))+
   scale_fill_manual(values = c("grey80","lightblue"))+
-  geom_point(data=birdsMO.dys1, 
+  geom_point(data=birdsMO.dys1%>%filter(timegrp==names(bbgroups)[h]), 
              aes(y=mean, x=month), color="black", size=.4)+
-  geom_errorbar(data=birdsMO.dys1,
+  geom_errorbar(data=birdsMO.dys1%>%filter(timegrp==names(bbgroups)[h]),
                 aes(x=month, ymin=mean-sd, ymax=mean+sd), 
                 width=.3,position=position_dodge(.9))+
   scale_x_continuous(limits =c(1,12),breaks=c(1,2,3,4,5,6,7,8,9,10,11,12),
@@ -293,15 +324,16 @@ sample.size.inset<-ggplot()+
         legend.position = "none",
         #panel.background = element_rect(fill = "transparent"),
         strip.background = element_blank())+
-  facet_wrap(~in_poly,ncol = 1)
+  facet_wrap(~in_poly,ncol = 1, scales="free_y")
 
 B.with.inset <-
   ggdraw() +
   draw_plot(B) +
-  draw_plot(sample.size.inset, x = 0.54, y = .17, width = .4, height = .3)
+  draw_plot(sample.size.inset, x = 0.66, y = .15, width = .3, height = .3)
 
 plotAB<-gridExtra::grid.arrange(B.with.inset ,A,ncol=2)
-ggsave(plotAB,filename = paste0(dir,"species/",species,"/",grp.ids[h],"_",species,"_",clipper_list$clipperName,".png"),width=8,height=10, dpi = 300)
+ggsave(plotAB,filename = paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$clipperName,".png"),width=12,height=10, dpi = 300)
+saveRDS(plotAB,paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$clipperName,".rds"))
 
   }
 }
