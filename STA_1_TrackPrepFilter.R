@@ -18,11 +18,11 @@ sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
 sp="STAL" #need to remake datafiles
 sp="BRAC" #get & compile GPS data 2014-2019
-sp="WEGU"
-sp="RTLO"
-sp="PALO"
+sp="WEGU" #add to metadata
+sp="RTLO" #add to metadata
+sp="PALO" #add to metadata
 sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
-sp="LAAL"
+sp="LAAL" #add to metadata
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 #if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
