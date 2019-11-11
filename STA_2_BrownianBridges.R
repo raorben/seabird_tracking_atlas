@@ -17,11 +17,18 @@ library(gridExtra)#for pdfs
 rm(list=ls()) #empty environment
 
 
-sp<-"COMU"
-sp<-"PFSH"
-sp<-"SOSH"
-sp<-"NOFU"
-sp<-"BFAL"
+sp="BFAL" #need to add old data + Shaffer to meta, change file names
+sp="COMU" #run Sept19 all years, looks good
+sp="PFSH" #run Sept19 all years, looks good
+sp="SOSH" #run Sept19 all years, looks good
+sp="STAL" #need to remake datafiles
+sp="BRAC" #get & compile GPS data 2014-2019
+sp="WEGU" #add to metadata
+sp="RTLO" 
+sp="PALO" 
+sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
+sp="LAAL" #add to metadata
+sp="BLKI" #run a few and see how the gls data look?
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
@@ -35,6 +42,7 @@ source(paste0(gitdir,"STA_Functions.R"))
 
 # Read in Clipper ---------------------------------------------------------
 clipperName<-"PNW_wUSEEZ"
+clipperName<-"Oregon_wUSEEZ"
 
 # read in list of all potential clipper files
 # polys are stored as WGS84 and then projected in MakeClippers.R
@@ -47,7 +55,7 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-09-05_781birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-09-25_815birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
 meta<-meta[meta$species==sp,]
   meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
 
@@ -124,7 +132,6 @@ pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_bb_1_segments.pdf"
 dev.off()
 
 ### Compiles Segments BB by Individuals and Groups ----------------------------------------
-
 #set time grouping variable (year, season, month)
 #needs to be the same used for UniID segmentation if individuals span groups
 
@@ -143,10 +150,12 @@ bbindis<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_ind
 
 #ignore directory errors if the directories already exist
 bbindis
-#bbindis is a list of estUDm for each grouping variable. Then each estUDm contains a list of estUDs 
+#bbindis is a list of estUDm for each grouping variable. 
+#Then each estUDm contains a list of estUDs 
 #for each individual weighted by the tracking time inside the polygon
 
-#sum individual densities by group weighted by the number of days for each individual / total days:
+#sum individual densities by group weighted by the number of days for 
+#each individual / total days:
 names(bbindis) #check groups
 
 bbgroups<-bb_sumbygroup(bbindis,
@@ -155,13 +164,17 @@ bbgroups<-bb_sumbygroup(bbindis,
 saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
 bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
 
-
-
+getvolumeUD(bbindis)
+getverticeshr(bbindis, percent=25, standardize=TRUE)
+a<-getverticeshr(bbindis[[1]], percent=25,  standardize = TRUE)
+plot(a)
 # Plot Rasters  ------------------------------------------------------------
+library(cowplot)
+
 #year
-tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
+#tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
 #all
-#tracks_inpoly.df$timegrp<-"all"
+tracks_inpoly.df$timegrp<-"all"
 
 sta_quickplot(bbgroups,
               clipper_list=clipper_list,

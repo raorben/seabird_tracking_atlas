@@ -914,6 +914,7 @@ in_poly<-function(all_tracks=tracks,# tracks<-output[[1]] from function SDAFreit
     track.filts <- track%>%dplyr::filter(keeps==1)
     TrackLength<-nrow(track.filts)
    
+    if(TrackLength==0)next
     #convert tracks into a spatial data frame & reproject
     track.filts.sp <- SpatialPointsDataFrame(coords = track.filts[c("lon1","lat1")], data = track.filts)
     

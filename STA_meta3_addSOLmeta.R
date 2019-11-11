@@ -124,7 +124,17 @@ solmeta$file_name<-as.character(solmeta$file_name)
 
 solmeta%>%filter(species=="COMU")%>%
   filter(deploy_year>2015)%>%
-  dplyr::select(deploy_year,tag_id,animal_id,argos_id)
+  dplyr::select(deploy_year,tag_id,animal_id,argos_id, file_name)
+
+ids<-unique(solmeta$argos_id[solmeta$deploy_year==2016 | solmeta$deploy_year==2017])
+ids<-ids[is.na(ids)==FALSE]
+ids<-ids[ids>0]
+for (i in ids){
+  idx<-which(solmeta$argos_id==i)
+  solmeta$file_name[idx]<-paste0(solmeta$argos_id[idx],"_",solmeta$deploy_year[idx])
+}
+solmeta$file_name<-as.character(solmeta$file_name)
+solmeta$loc_data[solmeta$file_name=="160356_2017"]<-0
 
 #remove unwanted columns
 solmeta<-solmeta%>%dplyr::select(-OID,-Deploy.Date_gmt,-Deploy.Hour_gmt,-Deploy.Min_gmt,
