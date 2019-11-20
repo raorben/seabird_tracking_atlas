@@ -113,21 +113,27 @@ track_prep_filter<-function(species,
   
   INFO<-data.frame()
   Tracks<-NULL
+  missingbirds<-NULL
   # loop through birds
   for (i in 1:length(meta[,1])) {			  
-    animal.id <- (meta$animal_id[i])
+    #animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
     STA_id <- meta$STA_id[i]
     #print(animal.id)
     
     #### read in track
     file1<-list.files(path = dir.in,recursive = TRUE,pattern=file_name)
+    if (length(file1)==0) missingbirds<-rbind(missingbirds,file_name)
+    if (length(file1)==0) next
+    
     #option one uses exact match with metadata
-    if (stringr::str_detect(file_name,file1)==TRUE){track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),
-                                             header=T, sep=",",strip.white=T,stringsAsFactors = F)
+    if (stringr::str_detect(file_name,file1)==TRUE){
+      track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),
+      header=T, sep=",",strip.white=T,stringsAsFactors = F)
     }else {track <- read.table(paste(dir.in,"/",file1,sep = ""),
                           header=T, sep=",",strip.white=T,stringsAsFactors = F)}
-  
+
+    
     track$collab1_point_contact_name<-meta$collab1_point_contact_name[i]
     track$deploy_site<-meta$deploy_site[i]
 
@@ -204,8 +210,8 @@ track_prep_filter<-function(species,
       t2$lat1<-as.numeric(meta$lat_end[i])
       t2$lon1<-as.numeric(meta$lon_end[i])
 
-      t2$collab1_point_contact_name<-meta$collab1_point_contact_name[meta$animal_id==animal.id]
-      t2$deploy_site<-meta$deploy_site[meta$animal_id==animal.id]
+      t2$collab1_point_contact_name<-meta$collab1_point_contact_name[meta$STA_id==meta$STA_id[i]]
+      t2$deploy_site<-meta$deploy_site[meta$STA_id==meta$STA_id[i]]
 
       track<-rbind(track,t2)
       rm(t2)
@@ -295,7 +301,7 @@ track_prep_filter<-function(species,
     #        dupremoved,"filtered",filtered,
     #        "retained",retained))
    
-    info<-data.frame(animal.id,STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
+    info<-data.frame(meta$animal_id[i],STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
     info$animal.id<-as.character(info$animal.id)
@@ -316,14 +322,20 @@ track_prep_filter<-function(species,
     
     track$sensors<-as.character(track$sensors)
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
+  
+    track$device_id<-as.character(track$device_id)
+    if(length(track$UniID_gap)>0){
+    track$UniID_gap<-as.character(track$UniID_gap)}
     
     # bind all filtered tracks
     Tracks<-bind_rows(Tracks,track)
     rm(track)}
   
+  Track.Plots1 = Track.Plots[-which(sapply(Track.Plots, is.null))]
+  
   Tracks$uid<-1:length(Tracks[,1])
-  ouput<-list(Tracks,Track.Plots,INFO)
-  names(ouput)<-c("tracks_filt","tf_plots","tf_info")
+  ouput<-list(Tracks,Track.Plots1,INFO, missingbirds)
+  names(ouput)<-c("tracks_filt","tf_plots","tf_info","missing")
   return(ouput)
 }
 
@@ -355,10 +367,9 @@ track_prep<-function(species,
   Tracks<-NULL
   # loop through birds
   for (i in 1:length(meta[,1])) {			  
-    animal.id <- (meta$animal_id[i])
+    #animal.id <- (meta$animal_id[i])
     file_name <- meta$file_name[i]
     STA_id <- meta$STA_id[i]
-    #print(animal.id)
     
     #### read in track
     track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),header=T, sep=",",strip.white=T,stringsAsFactors = F)
@@ -1189,6 +1200,7 @@ bb_individuals<-function(bb_probabilitydensity=bb, #Output from IndividualBB
     bbindis[[h]]<-ud.track
   }
   names(bbindis)<-grp.ids
+  #class(bbindis)<-"estUD"
   return(bbindis)
 }
 

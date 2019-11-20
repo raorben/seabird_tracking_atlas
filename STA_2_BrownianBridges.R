@@ -31,7 +31,7 @@ sp="LAAL" #add to metadata
 sp="BLKI" #run a few and see how the gls data look?
 
 # set directories
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 source(paste0(gitdir,"STA_Functions.R"))
@@ -55,7 +55,7 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-09-25_815birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-16_815birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
 meta<-meta[meta$species==sp,]
   meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
 
@@ -124,6 +124,9 @@ tracksums.out<-segments$tracksums.out
 contour<-segments$contour
 tag <- names(bb)
 
+image(bb)
+plot(getverticeshr(bb, 50), add=TRUE, lwd=2)
+
 ### Makes Quality Control plots for IndividualBB --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_bb_1_segments.pdf"), onefile = TRUE)
   for (i in 1:length(tag)) {
@@ -136,9 +139,9 @@ dev.off()
 #needs to be the same used for UniID segmentation if individuals span groups
 
 #year:  
-tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
+#tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
 #all:
-#tracksums.out$timegrp<-"all"
+tracksums.out$timegrp<-"all"
 
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
@@ -161,13 +164,19 @@ names(bbindis) #check groups
 bbgroups<-bb_sumbygroup(bbindis,
                         tracksums.out)
 
+getverticeshr(bbindis, standardize=TRUE,percent = 95)
+
+
+
+
 saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
 bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
 
-getvolumeUD(bbindis)
-getverticeshr(bbindis, percent=25, standardize=TRUE)
-a<-getverticeshr(bbindis[[1]], percent=25,  standardize = TRUE)
-plot(a)
+# getvolumeUD(bbindis)
+# getverticeshr(bbvol, percent=25, standardize=TRUE)
+# a<-getverticeshr(bbindis[[1]], percent=25,  standardize = TRUE)
+# plot(a)
+
 # Plot Rasters  ------------------------------------------------------------
 library(cowplot)
 

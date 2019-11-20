@@ -13,25 +13,22 @@ library(argosfilter)
 rm(list=ls())
 
 sp="BFAL" #need to add old data + Shaffer to meta, change file names
+sp="BRAC" #get & compile GPS data 2014-2019
+sp="WEGU" #add to metadata 
 sp="COMU" #run Sept19 all years, looks good - gives error
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
-sp="STAL" #need to remake datafiles
-sp="BRAC" #get & compile GPS data 2014-2019
-sp="WEGU" #add to metadata
+sp="STAL" #run Nov19 all years, looks good
 sp="RTLO" #run Sept19 all years, looks good
 sp="PALO" #run Sept19 all years, looks good
 sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
-sp="LAAL" #add to metadata
-sp="RHAU" #add to metaata (CA only)
-##sp="BLKI" #run a few and see how the gls data look?
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 #if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
 #if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 # set directories
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"} ##RAO
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
@@ -42,7 +39,7 @@ source(paste0(gitdir,"STA_Functions.R"))
 
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-09-27_815birds.csv"),header=T, sep=",", 
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-18_804birds.csv"),header=T, sep=",", 
                  strip.white=T, na.strings=c("NA","NaN", " ",""),stringsAsFactors = FALSE)
 
 parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
@@ -59,7 +56,7 @@ tf_out<-track_prep_filter(species=sp,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/",sp,"/1_DataIn"),
-                          tagtype="ptt", #ptt #gps
+                          tagtype="gps", #ptt #gps
                           lcerrref="costa",
                           parameters=parameters,
                           meta=meta,
@@ -67,6 +64,7 @@ tf_out<-track_prep_filter(species=sp,
 tracks_filt<-tf_out$tracks_filt
 tf_plots<-tf_out$tf_plot #list of ggplots showing prefiltered and filtered locations  
 tf_info<-tf_out$tf_info
+tf_missing<-tf_out$missing
 
 # Makes Quality Control plots for Freitas Filter --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_trackfilter.pdf"), onefile = TRUE)

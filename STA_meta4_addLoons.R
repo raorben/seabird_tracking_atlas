@@ -14,7 +14,7 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
-meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-09-27_800birds.rda"))
+meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-11-18_751birds.rda"))
 
 palo.df<-read.csv("/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/species/PALO/Pacific Loons Alaska Colville River Delta.csv",
                na.strings=c("NA","NaN", " ",""),# places a NA in all cells with all these cases
@@ -42,6 +42,7 @@ palo <- rename(palo, deploy_site = study.site)
 palo <- rename(palo, lat_deploc = deploy.on.latitude)
 palo <- rename(palo, lon_deploc = deploy.on.longitude)
 palo <- rename(palo, datetime_end_track_UTC=deploy.off.date)
+palo <- rename(palo, Tag_brand=tag.manufacturer.name)
 
 palo$datetime_deploy_UTC<-ymd_hms(palo$deploy.on.date)
 palo$location_type<-"Argos"
@@ -61,7 +62,7 @@ palo$collab2_point_contact_email<-"HarrisonAL@si.edu"
 palo$collab2_organization<-"Smithsonian Conservation Biology Institute"
 
 palo<-palo%>%dplyr::select(-tag.readout.method,-animal.mass,-animal.reproductive.condition,
-                           -attachment.type,-deploy.on.person,-tag.manufacturer.name,
+                           -attachment.type,-deploy.on.person,
                            -tag.model,-tag.production.date,-animal.taxon,-deploy.on.date)
 
 palo$tag_id<-as.character(palo$tag_id)
