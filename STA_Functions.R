@@ -173,7 +173,9 @@ track_prep_filter<-function(species,
     Tracklength_clipped<-length(track[,1])
     TrackLength_ends_added<-0
     
+
     if (tagtype=="gps"){track$lc<-"G"}
+    if(length(track$lc)==0){print("Check tag type")}
     
     #### insert rows in track if metadata indicates insert deployment location, inserted rows labelled with lc<-4 and are not filtered
     # does this by adding the first line again, making all values NA, then adds key info back in
@@ -1555,3 +1557,77 @@ wrap360 = function(lon) {
 # writePolyShape(ver90,file.path(output,"RHP_CHICK_90"))
 
 
+#keeping this in the script for easy editing 
+sta_saveraster_sqrt<-function(bbgroups,
+                              clipper_list=clipper_list,
+                              dir,
+                              species){
+  require(raster)
+  
+  #get the clipper ready
+  clipper_wgs84<-clipper_list$clipper
+  (prjWant<-clipper_list$projWant)
+  clipper_proj<-clipper_list$clipper_proj
+  
+  grp.ids<-names(bbgroups)
+  
+  for (h in 1:length(names(bbgroups))){
+    # make the estUD into a raster
+    a<-bbgroups[[h]]
+    allgrps.indiv.raster<-raster(a$den_sum)
+    
+    # add projection to raster
+    proj4string(allgrps.indiv.raster)<-CRS(prjWant)
+    proj4string(allgrps.indiv.raster)
+    
+    # crop raster to clipper
+    r2 <- crop(allgrps.indiv.raster, extent(clipper_proj))
+    allgrps.indiv.raster.clip <- raster::mask(r2, clipper_proj)
+    allgrps.indiv.raster.clip.sqrt <- calc(allgrps.indiv.raster.clip, fun=sqrt) 
+    
+    ## Check that it worked
+    #plot(allgrps.indiv.raster.clip)
+    #plot(clipper_proj, add=TRUE, lwd=2)
+    
+    rf <- writeRaster(allgrps.indiv.raster.clip.sqrt, 
+                      filename=paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$clipperName,"_sqrt.asc"), 
+                      datatype='ascii', overwrite=TRUE)}
+  
+}
+
+#keeping this in the script for easy editing 
+sta_saveraster<-function(bbgroups,
+                         clipper_list=clipper_list,
+                         dir,
+                         species){
+  require(raster)
+  
+  #get the clipper ready
+  clipper_wgs84<-clipper_list$clipper
+  (prjWant<-clipper_list$projWant)
+  clipper_proj<-clipper_list$clipper_proj
+  
+  grp.ids<-names(bbgroups)
+  
+  for (h in 1:length(names(bbgroups))){
+    # make the estUD into a raster
+    a<-bbgroups[[h]]
+    allgrps.indiv.raster<-raster(a$den_sum)
+    
+    # add projection to raster
+    proj4string(allgrps.indiv.raster)<-CRS(prjWant)
+    proj4string(allgrps.indiv.raster)
+    
+    # crop raster to clipper
+    r2 <- crop(allgrps.indiv.raster, extent(clipper_proj))
+    allgrps.indiv.raster.clip <- raster::mask(r2, clipper_proj)
+    
+    ## Check that it worked
+    #plot(allgrps.indiv.raster.clip)
+    #plot(clipper_proj, add=TRUE, lwd=2)
+    
+    rf <- writeRaster(allgrps.indiv.raster.clip, 
+                      filename=paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$clipperName,".asc"), 
+                      datatype='ascii', overwrite=TRUE)}
+  
+}

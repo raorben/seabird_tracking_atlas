@@ -24,14 +24,14 @@ sp="COMU" #run Sept19 all years, looks good
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
 sp="STAL" #need to remake datafiles
-sp="BRAC" #TODO: get & compile GPS data 2014-2019
+sp="BRAC" #TODO: get & compile GPS data 2014
 sp="WEGU" #TODO: add to metadata
-sp="RTLO" #run Sept2020
+sp="RTLO" #run Sept2020, looks good
 sp="PALO" #run Sept2020, looks good
 sp="NOFU" #run Sept19 all years, looks good
 
 ##grouping used to make brownian bridges
-timegrp<-"season" #"year", "all"
+timegrp<-"season" #"year", "all", "season"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
@@ -58,7 +58,7 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-16_815birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-23_804birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
 meta<-meta[meta$species==sp,]
   meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
 
@@ -258,6 +258,8 @@ sta_quickplot<-function(bbgroups,
       #plot(allgrps.indiv.raster.clip)
       #plot(clipper_proj, add=TRUE, lwd=2)
 
+      rf <- writeRaster(allgrps.indiv.raster.clip, filename=paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$clipperName,".asc"), datatype='ascii', overwrite=TRUE)
+      
       # take clipped raster and reproject in WGS84 for viz
       allgrps.indiv.raster.clip.wgs84<-projectRaster(allgrps.indiv.raster.clip,crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
       
@@ -375,3 +377,16 @@ sta_quickplot(bbgroups,
               dir,
               species=sp,
               tracks_inpoly.df)
+
+
+
+
+sta_saveraster_sqrt(bbgroups,
+               clipper_list=clipper_list,
+               dir,
+               species=sp)
+
+sta_saveraster(bbgroups,
+                    clipper_list=clipper_list,
+                    dir,
+                    species=sp)

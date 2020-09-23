@@ -16,7 +16,7 @@ rm(list=ls())
 sp="BFAL" #need to add old data + Shaffer to meta, change file names
 sp="BRAC" #get & compile GPS data 2014-2019
 sp="WEGU" #add to metadata 
-sp="COMU" #run Sept19 all years, looks good - gives error
+sp="COMU" #run Sept19 all years, looks good 
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
 sp="STAL" #run Nov19 all years, looks good, need to add Aleutian birds
@@ -52,7 +52,7 @@ lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=
 t$species<-sp
 write.table(t, file=paste0(dir,"species/DataSetSum.csv"),sep = ",", append = TRUE,col.names = NA)
 
-meta%>%dplyr::filter(species==sp)%>%dplyr::select(file_name, loc_data)
+meta%>%dplyr::filter(species==sp)%>%dplyr::select(STA_id,file_name, loc_data)
 
 #Tracks are single files file name matching one in the meta file. Saved in "dir.in".  
 #Output is a list, obj 1 is the concatinated data, obj 2 is a list of plots, obj 3 is a table of the filtering info
@@ -60,7 +60,7 @@ tf_out<-track_prep_filter(species=sp,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/",sp,"/1_DataIn"),
-                          tagtype="ptt", #ptt #gps
+                          tagtype="gps", #ptt #gps
                           lcerrref="costa",
                           parameters=parameters,
                           meta=meta,
