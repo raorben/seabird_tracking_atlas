@@ -159,7 +159,7 @@ comu$loc_data[comu$file_name=="160356_2017"]<-0
 solmeta<-bind_rows(comu,newinfo%>%dplyr::select(-year))
 solmeta$file_name
 
-
+solmeta$loc_data[solmeta$Tag_brand=="WildlifeComputers"]<-0
 
 #remove unwanted columns
 solmeta<-solmeta%>%dplyr::select(-OID,-Deploy.Date_gmt,-Deploy.Hour_gmt,-Deploy.Min_gmt,

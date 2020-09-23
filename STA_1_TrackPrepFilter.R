@@ -3,6 +3,7 @@ library(dplyr)
 library(reshape2)
 library(ggplot2)
 library(argosfilter)
+library(lubridate)
 
 # DATA PREPRUN SCRIPT: COMU
 # data are from Argos PTT deployments 2012-2017
@@ -18,7 +19,7 @@ sp="WEGU" #add to metadata
 sp="COMU" #run Sept19 all years, looks good - gives error
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
-sp="STAL" #run Nov19 all years, looks good
+sp="STAL" #run Nov19 all years, looks good, need to add Aleutian birds
 sp="RTLO" #run Sept19 all years, looks good
 sp="PALO" #run Sept19 all years, looks good
 sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
@@ -39,24 +40,27 @@ source(paste0(gitdir,"STA_Functions.R"))
 
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-18_804birds.csv"),header=T, sep=",", 
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-23_804birds.csv"),header=T, sep=",", 
                  strip.white=T, na.strings=c("NA","NaN", " ",""),stringsAsFactors = FALSE)
 
 parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 
-meta%>%dplyr::filter(species==sp)%>%dplyr::filter(loc_data==1)%>%
+(t<-meta%>%dplyr::filter(species==sp)%>%dplyr::filter(loc_data==1)%>%
   group_by(deploy_year,deploy_site,collab1_point_contact_name,location_type)%>%
-  dplyr::summarize(n_birds=n_distinct(tag_id),minDate=min(datetime_deploy_UTC))
+  dplyr::summarize(n_birds=n_distinct(tag_id),minDate=date(min(datetime_deploy_UTC))))
+t$species<-sp
+write.table(t, file=paste0(dir,"species/DataSetSum.csv"),sep = ",", append = TRUE,col.names = NA)
 
 meta%>%dplyr::filter(species==sp)%>%dplyr::select(file_name, loc_data)
+
 #Tracks are single files file name matching one in the meta file. Saved in "dir.in".  
 #Output is a list, obj 1 is the concatinated data, obj 2 is a list of plots, obj 3 is a table of the filtering info
 tf_out<-track_prep_filter(species=sp,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/",sp,"/1_DataIn"),
-                          tagtype="gps", #ptt #gps
+                          tagtype="ptt", #ptt #gps
                           lcerrref="costa",
                           parameters=parameters,
                           meta=meta,

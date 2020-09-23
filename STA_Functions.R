@@ -301,10 +301,10 @@ track_prep_filter<-function(species,
     #        dupremoved,"filtered",filtered,
     #        "retained",retained))
    
-    info<-data.frame(meta$animal_id[i],STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
+    info<-data.frame(animal_id=meta$animal_id[i],STA_id,vmax,ang[1],ang[2],distlim[1],distlim[2],
                      lcerrref,TrackLengthOrig,Tracklength_clipped,
                      TrackLength_ends_added,latlon0,dupremoved,retained)
-    info$animal.id<-as.character(info$animal.id)
+    info$animal_id<-as.character(info$animal_id)
     info$lcerrref<-as.character(info$lcerrref)
 
     # bind all info
@@ -322,8 +322,11 @@ track_prep_filter<-function(species,
     
     track$sensors<-as.character(track$sensors)
     track<-track%>%dplyr::select(-utcF)#gets rid of utc time as a factor
-  
-    track$device_id<-as.character(track$device_id)
+
+    #Removes Tag ID as an identifier
+    track$tag_id<-NA
+    track<-track%>%dplyr::select(-tag_id)  
+
     if(length(track$UniID_gap)>0){
     track$UniID_gap<-as.character(track$UniID_gap)}
     
@@ -1010,7 +1013,9 @@ calc_leavetimesegs<-function(hrs=8,#### set hrs for minimum gap in second (conve
 
   tracks.want<-tracks%>%dplyr::filter(in_polyBuffer==1)
   
-  tracks.want$id3<-trip::sepIdGaps(tracks.want$uniID, tracks.want$utc, minGap=minGap)
+  tracks.want$id3<-trip::sepIdGaps(tracks.want$uniID, 
+                                   tracks.want$utc, 
+                                   minGap=minGap)
   
   tracks$id3<-tracks$in_poly
   
@@ -1027,6 +1032,35 @@ calc_leavetimesegs<-function(hrs=8,#### set hrs for minimum gap in second (conve
 }
 
 # Brownian Bridges ---------------------------------------------------------
+timegrp_apply<-function(tracks_filt,
+                        timegrp){
+  require(lubridate)
+  if(timegrp=="all"){
+    tracks_filt$uniID<-paste0(tracks_filt$STA_id,"_",year(tracks_filt$utc),"_",timegrp)
+    print(unique(tracks_filt$uniID))
+    print(length(unique(tracks_filt$uniID)))
+    return(tracks_filt)
+  } else if (timegrp=="year"){
+    tracks_filt$uniID<-paste0(tracks_filt$STA_id,"_",year(tracks_filt$utc),"_",timegrp)
+    print(unique(tracks_filt$uniID))
+    print(length(unique(tracks_filt$uniID)))
+    return(tracks_filt)
+  } else if (timegrp=="season"){
+    tracks_filt$month<-month(tracks_filt$utc)
+    tracks_filt$season<-NA
+    tracks_filt$season[tracks_filt$month==3 |tracks_filt$month==4 |tracks_filt$month==5 ]<-"spring"
+    tracks_filt$season[tracks_filt$month==6 |tracks_filt$month==7 |tracks_filt$month==8 ]<-"summer"
+    tracks_filt$season[tracks_filt$month==9 |tracks_filt$month==10 |tracks_filt$month==11 ]<-"fall"
+    tracks_filt$season[tracks_filt$month==12 |tracks_filt$month==1 |tracks_filt$month==2 ]<-"winter"
+    tracks_filt$uniID<-paste0(tracks_filt$STA_id,"_",year(tracks_filt$utc),"_",tracks_filt$season)
+    print(unique(tracks_filt$uniID))
+    print(length(unique(tracks_filt$uniID)))
+    return(tracks_filt)
+  } else {
+    print("new grouping, please revise codes by adding a new else if level")
+    return(tracks_filt)
+  }
+}
 
 bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:time and a segment id
                            clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
@@ -1292,7 +1326,7 @@ bb_sumbygroup<-function(bbindis,
     re <- lapply(1:ncol(udspdf), function(i) {
       so <- new("estUD", udspdf[,i])
       so@h <- list(h=0, meth="specified")
-      so@vol <- FALSE
+      so@vol <- TRUE
       return(so)})
     
     names(re) <- names(udspdf)

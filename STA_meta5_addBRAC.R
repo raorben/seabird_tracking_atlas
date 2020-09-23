@@ -13,7 +13,7 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
-meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-11-18_785birds.rda"))
+meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-11-23_785birds.rda"))
 
 brac<-read.csv("/Users/rachaelorben/Box/DASHCAMS/data/Field Data/2019_DASHCAMS_Deployment_Field_Data.csv",
                na.strings=c("NA","NaN", " ","","na"),# places a NA in all cells with all these cases

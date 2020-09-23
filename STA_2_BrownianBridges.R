@@ -3,6 +3,7 @@ library(adehabitatHR)
 library(SDMTools)
 library(raster)
 library(sp)
+library(marmap)
 
 #data manipulation
 library(stringr)
@@ -13,22 +14,24 @@ library(lubridate)
 #plotting
 library(ggplot2) #tracksclipped
 library(gridExtra)#for pdfs
+library(cowplot)#for multi-panel plots
 
 rm(list=ls()) #empty environment
 
 
-sp="BFAL" #need to add old data + Shaffer to meta, change file names
+sp="BFAL" #TODO: need to add old data + Shaffer to meta, change file names
 sp="COMU" #run Sept19 all years, looks good
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
 sp="STAL" #need to remake datafiles
-sp="BRAC" #get & compile GPS data 2014-2019
-sp="WEGU" #add to metadata
-sp="RTLO" 
-sp="PALO" 
-sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
-sp="LAAL" #add to metadata
-sp="BLKI" #run a few and see how the gls data look?
+sp="BRAC" #TODO: get & compile GPS data 2014-2019
+sp="WEGU" #TODO: add to metadata
+sp="RTLO" #run Sept2020
+sp="PALO" #run Sept2020, looks good
+sp="NOFU" #run Sept19 all years, looks good
+
+##grouping used to make brownian bridges
+timegrp<-"season" #"year", "all"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
@@ -66,18 +69,16 @@ load(file=paste0(dir,"species/",sp,"/",sp,"_trackfilter.RData"))
 remove(tf_info); remove(filt_sum); remove(filt_error)
 
 ## #########################################################################
-# Unique ID for dataset and grouping
-tracks_filt$uniID<-paste0(tracks_filt$STA_id,"_",year(tracks_filt$utc))
-unique(tracks_filt$uniID)
-length(unique(tracks_filt$uniID))
+#set UniID with time group variable
+tracks_filt_grp<-timegrp_apply(tracks_filt,timegrp)
 
-frags<-tracks_filt%>%group_by(uniID)%>%summarise(n=n())%>%filter(n<3)
-tracks_filt<-tracks_filt%>%filter(!uniID %in% frags$uniID)
+frags<-tracks_filt_grp%>%group_by(uniID)%>%summarise(n=n())%>%filter(n<3)
+tracks_filt_grp<-tracks_filt_grp%>%filter(!uniID %in% frags$uniID)
 
 # #########################################################################
 # Clips tracks to the polygon   -------------------------------------------
 ## adds a 1 or 0 for in or out of polygon, or buffer
-tracks_inpoly<-in_poly(all_tracks=tracks_filt,
+tracks_inpoly<-in_poly(all_tracks=tracks_filt_grp,
                                   CLIPPERS=clipper_list,
                                   dir.out=dir,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
@@ -85,7 +86,7 @@ clipper.plots<-tracks_inpoly$Clipper.Plots
 tracks_inpoly.df<-tracks_inpoly$tracks.out #all locations w/ in-out poly
 
 # Makes Quality Control plots for PolygonClip --------------------------
-pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,".pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_",timegrp,".pdf"), onefile = TRUE)
 for(i in 1:length(clipper.plots)){
   top.plot <-clipper.plots[[i]]
   grid.arrange(top.plot)
@@ -97,14 +98,18 @@ dev.off()
 # only returns segments inside the poly or buffer
 tracks_inpoly_df<-tracks_inpoly$tracks.out
 
-tracks_seg_df<-calc_leavetimesegs(hrs=72, tracks=tracks_inpoly_df, clipperName)
+tracks_seg_df<-calc_leavetimesegs(hrs=72, 
+                                  tracks=tracks_inpoly_df, 
+                                  clipperName)
 unique(tracks_seg_df$seg_id) #how many segments?
 length(unique(tracks_seg_df$seg_id))
+
+summary(tracks_seg_df)
 
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
-#speed<-45
+
 segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
@@ -115,8 +120,8 @@ segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             minNo=2,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
                             proj4tracks="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") 
 
-saveRDS(segments,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_1_segments.rda"))
-segments<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_1_segments.rda"))
+saveRDS(segments,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
+segments<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
 
 bb<-segments$bb
 bbvol<-segments$bbvol
@@ -125,10 +130,10 @@ contour<-segments$contour
 tag <- names(bb)
 
 image(bb)
-plot(getverticeshr(bb, 50), add=TRUE, lwd=2)
+plot(getverticeshr(bb, 70), add=TRUE, lwd=2)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
-pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_bb_1_segments.pdf"), onefile = TRUE)
+pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.pdf"), onefile = TRUE)
   for (i in 1:length(tag)) {
     image(bb[[i]], useRasterImage=TRUE,col=c("light grey", topo.colors(40)))
   }
@@ -141,15 +146,18 @@ dev.off()
 #year:  
 #tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
 #all:
-tracksums.out$timegrp<-"all"
+#tracksums.out$timegrp<-"all"
+#season
+tracksums.out$timegrp<-NA
+tracksums.out$timegrp<-sapply(strsplit(tracksums.out$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
                         tracksums=tracksums.out,
                         cellsize=3000)  #the UD is multiplied by the cellsize^2 to make the individual ud = 1
 
-saveRDS(bbindis,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",tracksums.out$timegrp[1],"_.rda"))
-bbindis<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",tracksums.out$timegrp[1],"_.rda"))
+saveRDS(bbindis,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",timegrp,"_.rda"))
+bbindis<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",timegrp,"_.rda"))
 
 #ignore directory errors if the directories already exist
 bbindis
@@ -164,13 +172,13 @@ names(bbindis) #check groups
 bbgroups<-bb_sumbygroup(bbindis,
                         tracksums.out)
 
-getverticeshr(bbindis, standardize=TRUE,percent = 95)
+class(bbindis)<-"estUD"
+match.arg(bbgroups)
+getverticeshr(bbgroups, standardize=TRUE,percent = 95)
+summary(bbgroups)
 
-
-
-
-saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
-bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups.rda"))
+saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"bb_3_groups.rda"))
+bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"bb_3_groups.rda"))
 
 # getvolumeUD(bbindis)
 # getverticeshr(bbvol, percent=25, standardize=TRUE)
@@ -178,18 +186,15 @@ bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_gr
 # plot(a)
 
 # Plot Rasters  ------------------------------------------------------------
-library(cowplot)
+
 
 #year
 #tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
 #all
-tracks_inpoly.df$timegrp<-"all"
-
-sta_quickplot(bbgroups,
-              clipper_list=clipper_list,
-              dir,
-              species=sp,
-              tracks_inpoly.df)
+#tracks_inpoly.df$timegrp<-"all"
+#season
+tracks_inpoly.df$timegrp<-NA
+tracks_inpoly.df$timegrp<-sapply(strsplit(tracks_inpoly.df$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 #summary of data inside polygon
 idsinpoly<-unique(tracksums.out$uniID)
@@ -204,6 +209,7 @@ meta%>%dplyr::filter(species==sp)%>%filter(STA_id %in% ids)%>%
 
 userdir<-'/Users/rachaelorben/Dropbox/Research/GlobalFishingWatch'
 bathy2<-readRDS(paste0(userdir,"/Analysis/compileddata/Bathymetryforggplot.rda"))
+
 unwrap360<-function(lon360){
   lon<-ifelse(lon360 > 180, -360 + lon360, lon360)
   return(lon)}
@@ -218,6 +224,8 @@ sta_quickplot<-function(bbgroups,
 
   
   require(ggplot2)
+  require(cowplot)
+  require(gridExtra)
   library(RColorBrewer)
   states<-map_data('state') 
   states_sub<-states[states$region%in%c("washington","oregon","california","alaska"),]
@@ -291,13 +299,14 @@ getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
 B<-ggplot() +
   geom_tile(data=bathy2,aes(x=wrap360(lon),y=V2,fill=Depth))+
-  scale_fill_gradientn(colours = c("grey95", "grey50"),name="Depth") +
+  scale_fill_gradientn(colours = c("grey95", "grey25"),name="Depth") +
   geom_polygon(data=w2hr_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_polygon(data=states_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_path(data=tracks_inpoly.df%>%filter(timegrp==names(bbgroups)[h]),
             aes(x=wrap360(lon1),y=lat1,group=STA_id,color=as.factor(STA_id)),size=0.2)+
   scale_color_manual(values = getPalette(colourCount))+
   geom_polygon(data=clipper_wgs84,aes(wrap360(long),lat,group=group),fill="NA",color="black",size=.5)+
+  annotate("text",x=wrap360(-129.8),y=48,label=sp,color="white",size=10,hjust = 0)+
   annotate("text",x=wrap360(-123.7),y=42.8,label="Bird sample size",color="white",size=5,hjust = 0)+
   xlab("Longitude")+
   ylab("Latitude")+
@@ -359,3 +368,10 @@ saveRDS(plotAB,paste0(dir,"species/",sp,"/",grp.ids[h],"_",sp,"_",clipper_list$c
 
   }
 }
+
+
+sta_quickplot(bbgroups,
+              clipper_list=clipper_list,
+              dir,
+              species=sp,
+              tracks_inpoly.df)

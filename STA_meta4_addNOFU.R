@@ -13,7 +13,7 @@ if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabir
 if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/Oregon_coast_tracking/Analysis/CCESTA/"}
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
-meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-11-18_766birds.rda"))
+meta<-readRDS(file = paste0(gitdir,"supporttables/STA_metadata_2019-11-23_766birds.rda"))
 
 nofu<-read.csv("/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/species/NOFU/NOFU_Hatch_meta.csv",
               na.strings=c("NA","NaN", " ",""),# places a NA in all cells with all these cases
