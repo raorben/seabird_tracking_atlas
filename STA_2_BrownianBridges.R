@@ -210,10 +210,6 @@ meta%>%dplyr::filter(species==sp)%>%filter(STA_id %in% ids)%>%
 
 userdir<-'/Users/rachaelorben/Dropbox/Research/GlobalFishingWatch'
 bathy2<-readRDS(paste0(userdir,"/Analysis/compileddata/Bathymetryforggplot.rda"))
-
-unwrap360<-function(lon360){
-  lon<-ifelse(lon360 > 180, -360 + lon360, lon360)
-  return(lon)}
 bathy2$lon<-unwrap360(bathy2$V1)
 
 #keeping this in the script for easy editing 

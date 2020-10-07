@@ -2,7 +2,8 @@ sta_quickplot<-function(bbgroups,
                         clipper_list=clipper_list,
                         dir,
                         species,
-                        tracks_inpoly.df){
+                        tracks_inpoly.df,
+                        bathy2){
   
   
   require(ggplot2)
@@ -83,7 +84,7 @@ sta_quickplot<-function(bbgroups,
     
     B<-ggplot() +
       geom_tile(data=bathy2,aes(x=wrap360(lon),y=V2,fill=Depth))+
-      scale_fill_gradientn(colours = c("grey95", "grey25"),name="Depth") +
+      scale_fill_gradientn(colours = c("grey95", "grey65"),name="Depth") +
       geom_polygon(data=w2hr_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
       geom_polygon(data=states_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
       geom_path(data=tracks_inpoly.df%>%filter(timegrp==names(bbgroups)[h]),
