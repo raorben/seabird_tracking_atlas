@@ -31,13 +31,14 @@ sp="PALO" #run Sept2020, looks good
 sp="NOFU" #run Sept19 all years, looks good
 
 ##grouping used to make brownian bridges
-timegrp<-"season" #"year", "all", "season"
+timegrp<-"all" #"year", "all", "season"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
 if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
-source(paste0(gitdir,"STA_Functions.R"))
+files.sources = list.files(paste0(gitdir,"R"), full.names = TRUE)
+sapply(X = files.sources, FUN=source)
 
 # A time grouping variable needs to be decided on and modifed for this script to work. 
 # Right now only one nesting of this variable is allowed so if you want a summary of all tracks
@@ -301,7 +302,7 @@ getPalette = colorRampPalette(brewer.pal(9, "Set1"))
 
 B<-ggplot() +
   geom_tile(data=bathy2,aes(x=wrap360(lon),y=V2,fill=Depth))+
-  scale_fill_gradientn(colours = c("grey95", "grey25"),name="Depth") +
+  scale_fill_gradientn(colours = c("grey95", "grey65"),name="Depth") +
   geom_polygon(data=w2hr_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_polygon(data=states_sub,aes(wrap360(long),lat,group=group),fill="black",color="grey60",size=0.1)+
   geom_path(data=tracks_inpoly.df%>%filter(timegrp==names(bbgroups)[h]),
