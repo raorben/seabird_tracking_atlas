@@ -36,7 +36,8 @@ if(Sys.info()[7]=="cherylhorton") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_O
 if(Sys.info()[7]=="cherylhorton") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 
-source(paste0(gitdir,"STA_Functions.R"))
+files.sources = list.files(paste0(gitdir,"R"), full.names = TRUE)
+sapply(X = files.sources, FUN=source)
 
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
