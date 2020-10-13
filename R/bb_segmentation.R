@@ -75,9 +75,11 @@ bb_segmentation<-function(tracks, #tracking data with a unique id for each bird:
   #this possibly done b/c BB has prefilter based on speed, we've already done speed distance and angle
   bb <- kernelbb(track.ltj, sig1=speed, sig2=sig2, grid = rast, byburst=TRUE)  
   
-  bbvol = getvolumeUD (bb)
+  #bbvol = getvolumeUD (bb)
+  #output<-list(bb,bbvol,tracksums.out,contour,projtracks,tracks1)
+  #names(output)<-c("bb","bbvol","tracksums.out","contour","projW","track")
   
-  output<-list(bb,bbvol,tracksums.out,contour,projtracks,tracks1)
-  names(output)<-c("bb","bbvol","tracksums.out","contour","projW","track")
+  output<-list(bb,tracksums.out,contour,projtracks,tracks1)
+  names(output)<-c("bb","tracksums.out","contour","projW","track")
   return(output)
 }

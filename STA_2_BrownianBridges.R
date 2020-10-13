@@ -46,7 +46,7 @@ sapply(X = files.sources, FUN=source)
 
 # Read in Clipper ---------------------------------------------------------
 clipperName<-"PNW_wUSEEZ"
-clipperName<-"Oregon_wUSEEZ"
+#clipperName<-"Oregon_wUSEEZ"
 
 # read in list of all potential clipper files
 # polys are stored as WGS84 and then projected in MakeClippers.R
@@ -85,6 +85,10 @@ tracks_inpoly<-in_poly(all_tracks=tracks_filt_grp,
                                   prjtracks="+proj=longlat +ellps=WGS84 +datum=WGS84")
 clipper.plots<-tracks_inpoly$Clipper.Plots
 tracks_inpoly.df<-tracks_inpoly$tracks.out #all locations w/ in-out poly
+
+saveRDS(tracks_inpoly.df,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_tracks_inpoly.df.rda"))
+tracks_inpoly.df<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_tracks_inpoly.df.rda"))
+
 
 # Makes Quality Control plots for PolygonClip --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_",timegrp,".pdf"), onefile = TRUE)
@@ -130,8 +134,6 @@ tracksums.out<-segments$tracksums.out
 contour<-segments$contour
 tag <- names(bb)
 
-image(bb)
-plot(getverticeshr(bb, 70), add=TRUE, lwd=2)
 
 ### Makes Quality Control plots for IndividualBB --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.pdf"), onefile = TRUE)
