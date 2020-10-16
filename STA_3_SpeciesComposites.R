@@ -30,7 +30,7 @@ w2hr<-map_data('world')
 w2hr_sub<-w2hr[w2hr$region%in%c("Canada"),]
 
 #"BRAC","WEGU", saving these for later!
-species<-c("BFAL","PFSH","SOSH","STAL","NOFU","COMU","RTLO","PALO")
+species<-c("BFAL","PFSH","SOSH","STAL","NOFU","COMU","RTLO","PALO","BRAC","WEGU")
 
 grps<-data.frame(timegrp="all",clipperName=c("PNW_wUSEEZ","Oregon_wUSEEZ"))
 
@@ -65,6 +65,7 @@ for (i in 1:length(species)){
   estUD<-estUD_list[[sp]]
   estUD$all$den_sum@proj4string<-CRS(projWant)
   estUD$all$den_sum@vol = FALSE
+  image(estUD)
   estUD.ud.vol <- getvolumeUD(estUD$all$den_sum, standardize=TRUE)
   estUD.con<-getverticeshr(estUD.ud.vol,percent = 50)
   estUD.con@data$id<-sp

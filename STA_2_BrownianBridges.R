@@ -101,14 +101,14 @@ dev.off()
 
 # Adds a time component to identify and label segments -------------------------------
 # only returns segments inside the poly or buffer
-tracks_inpoly_df<-tracks_inpoly$tracks.out
+tracks_inpoly.df<-tracks_inpoly$tracks.out
 
 tracks_seg_df<-calc_leavetimesegs(hrs=72, 
-                                  tracks=tracks_inpoly_df, 
+                                  tracks=tracks_inpoly.df, 
                                   clipperName)
 unique(tracks_seg_df$seg_id) #how many segments?
 length(unique(tracks_seg_df$seg_id))
-
+b<-tracks_seg_df%>%group_by(seg_id)%>%summarise(n=n())
 summary(tracks_seg_df)
 
 # Calculate Segment BrownianBridges ------------------------------------
@@ -122,7 +122,7 @@ segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             id.out = c("99999"), # to manually exclude birds or segments "99999" excludes none
                             sig2=cellsize,#the second smoothing parameter was 3000 m (the approximate mean error for PTT locations)
                             cellsize=cellsize,# related to error tags, in m
-                            minNo=2,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
+                            minNo=10,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
                             proj4tracks="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") 
 
 saveRDS(segments,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
@@ -134,7 +134,7 @@ tracksums.out<-segments$tracksums.out
 contour<-segments$contour
 tag <- names(bb)
 
-
+names(segments)
 ### Makes Quality Control plots for IndividualBB --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.pdf"), onefile = TRUE)
   for (i in 1:length(tag)) {
@@ -149,10 +149,10 @@ dev.off()
 #year:  
 #tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
 #all:
-#tracksums.out$timegrp<-"all"
+tracksums.out$timegrp<-"all"
 #season
-tracksums.out$timegrp<-NA
-tracksums.out$timegrp<-sapply(strsplit(tracksums.out$uniID, split='_', fixed=TRUE), function(x) (x[3]))
+#tracksums.out$timegrp<-NA
+#tracksums.out$timegrp<-sapply(strsplit(tracksums.out$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
@@ -171,6 +171,7 @@ bbindis
 #sum individual densities by group weighted by the number of days for 
 #each individual / total days:
 names(bbindis) #check groups
+summary(bbindis)
 
 bbgroups<-bb_sumbygroup(bbindis,
                         tracksums.out)
