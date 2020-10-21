@@ -79,8 +79,6 @@ track_prep_filter<-function(species,
   distlim <-  c(paramwant$distlim1,paramwant$distlim2)
   #print(paste("distance limit = ",distlim))
   
-  meta$datetime_deploy_UTC<-ymd_hms(meta$datetime_deploy_UTC)
-  
   # lcerrors
   if(lcerrref=="costa"){
     lcerr<-lcerrors$X68errCosta
@@ -120,10 +118,10 @@ track_prep_filter<-function(species,
     if (length(file1)==0) next
     
     #option one uses exact match with metadata
-    if (stringr::str_detect(file_name,file1)==TRUE){
+    if (stringr::str_detect(file_name,file1[1])==TRUE){
       track <- read.table(paste(dir.in,"/",file_name,".csv",sep = ""),
                           header=T, sep=",",strip.white=T,stringsAsFactors = F)
-    }else {track <- read.table(paste(dir.in,"/",file1,sep = ""),
+    }else {track <- read.table(paste(dir.in,"/",file1[1],sep = ""),
                                header=T, sep=",",strip.white=T,stringsAsFactors = F)}
     
     
@@ -180,6 +178,7 @@ track_prep_filter<-function(species,
       t1$tag_id<-track$tag_id[1]
       t1$year<-track$year[1]
       t1$ptt<-track$ptt[1]
+      track<-fncols(track, "uid")
       t1$uid<-track$uid[1]-.1
       t1$utc<-meta$datetime_deploy_UTC[i]
       t1$lat1<-as.numeric(meta$lat_deploc[i])
@@ -329,10 +328,10 @@ track_prep_filter<-function(species,
     Tracks<-bind_rows(Tracks,track)
     rm(track)}
   
-  Track.Plots1 = Track.Plots[-which(sapply(Track.Plots, is.null))]
+  #Track.Plots1 = Track.Plots[-which(sapply(Track.Plots, is.null))]
   
   Tracks$uid<-1:length(Tracks[,1])
-  ouput<-list(Tracks,Track.Plots1,INFO, missingbirds)
+  ouput<-list(Tracks,Track.Plots,INFO, missingbirds)
   names(ouput)<-c("tracks_filt","tf_plots","tf_info","missing")
   return(ouput)
 }

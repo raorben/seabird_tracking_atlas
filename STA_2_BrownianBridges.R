@@ -19,7 +19,7 @@ library(cowplot)#for multi-panel plots
 rm(list=ls()) #empty environment
 
 
-sp="BFAL" #TODO: need to add old data + Shaffer to meta, change file names
+sp="BFAL" #
 sp="COMU" #run Sept19 all years, looks good
 sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
@@ -46,7 +46,7 @@ sapply(X = files.sources, FUN=source)
 
 # Read in Clipper ---------------------------------------------------------
 clipperName<-"PNW_wUSEEZ"
-#clipperName<-"Oregon_wUSEEZ"
+clipperName<-"Oregon_wUSEEZ"
 
 # read in list of all potential clipper files
 # polys are stored as WGS84 and then projected in MakeClippers.R
@@ -59,7 +59,7 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-23_804birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
 meta<-meta[meta$species==sp,]
   meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
 
@@ -86,8 +86,8 @@ tracks_inpoly<-in_poly(all_tracks=tracks_filt_grp,
 clipper.plots<-tracks_inpoly$Clipper.Plots
 tracks_inpoly.df<-tracks_inpoly$tracks.out #all locations w/ in-out poly
 
-saveRDS(tracks_inpoly.df,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_tracks_inpoly.df.rda"))
-tracks_inpoly.df<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_tracks_inpoly.df.rda"))
+saveRDS(tracks_inpoly.df,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_0_tracks_inpoly.df.rda"))
+tracks_inpoly.df<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_0_tracks_inpoly.df.rda"))
 
 
 # Makes Quality Control plots for PolygonClip --------------------------
@@ -114,7 +114,7 @@ summary(tracks_seg_df)
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
-
+mino=3 # IMPORTANT to be small for PTT datasets, use 10+ for GPS data
 segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
@@ -122,7 +122,7 @@ segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             id.out = c("99999"), # to manually exclude birds or segments "99999" excludes none
                             sig2=cellsize,#the second smoothing parameter was 3000 m (the approximate mean error for PTT locations)
                             cellsize=cellsize,# related to error tags, in m
-                            minNo=10,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
+                            minNo=minNo,#minimum number of points to run for the bb - important with small clip areas where tracks are cut up when animal enters and leaves a box
                             proj4tracks="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0") 
 
 saveRDS(segments,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
@@ -159,8 +159,8 @@ bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
                         tracksums=tracksums.out,
                         cellsize=3000)  #the UD is multiplied by the cellsize^2 to make the individual ud = 1
 
-saveRDS(bbindis,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",timegrp,".rda"))
-bbindis<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_2_individuals_",timegrp,".rda"))
+saveRDS(bbindis,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_2_individuals.rda"))
+bbindis<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_2_individuals.rda"))
 
 #ignore directory errors if the directories already exist
 bbindis
@@ -176,22 +176,18 @@ summary(bbindis)
 bbgroups<-bb_sumbygroup(bbindis,
                         tracksums.out)
 
-saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups_",timegrp,".rda"))
-bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups_",timegrp,".rda"))
+saveRDS(bbgroups,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_3_groups.rda"))
+bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_3_groups.rda"))
 
-# getvolumeUD(bbindis)
-# getverticeshr(bbvol, percent=25, standardize=TRUE)
-# a<-getverticeshr(bbindis[[1]], percent=25,  standardize = TRUE)
-# plot(a)
 
 # Plot Rasters  ------------------------------------------------------------
 #year
 #tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
 #all
-#tracks_inpoly.df$timegrp<-"all"
+tracks_inpoly.df$timegrp<-"all"
 #season
-tracks_inpoly.df$timegrp<-NA
-tracks_inpoly.df$timegrp<-sapply(strsplit(tracks_inpoly.df$uniID, split='_', fixed=TRUE), function(x) (x[3]))
+#tracks_inpoly.df$timegrp<-NA
+#tracks_inpoly.df$timegrp<-sapply(strsplit(tracks_inpoly.df$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 #summary of data inside polygon
 idsinpoly<-unique(tracksums.out$uniID)

@@ -18,6 +18,10 @@ library(cowplot)#for multi-panel plots
 
 rm(list=ls()) #empty environment
 
+# set directories
+if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
+if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
+
 #loads functions
 files.sources = list.files(paste0(gitdir,"R"), full.names = TRUE)
 sapply(X = files.sources, FUN=source)
@@ -30,13 +34,10 @@ w2hr<-map_data('world')
 w2hr_sub<-w2hr[w2hr$region%in%c("Canada"),]
 
 #"BRAC","WEGU", saving these for later!
-species<-c("BFAL","PFSH","SOSH","STAL","NOFU","COMU","RTLO","PALO","BRAC","WEGU")
+species<-c("BFAL","PFSH","SOSH","STAL","NOFU","COMU","RTLO","PALO","BRAC")
 
 grps<-data.frame(timegrp="all",clipperName=c("PNW_wUSEEZ","Oregon_wUSEEZ"))
 
-# set directories
-if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
-if(Sys.info()[7]=="rachaelorben") {gitdir<-"/Users/rachaelorben/git_repos/seabird_tracking_atlas/"}
 
 SP_Contours<-NULL
 Polys_Over<-NULL
@@ -53,15 +54,15 @@ for (i in 1:nrow(grps)){
 estUD_list <- vector(mode = "list", length = length(species))
 names(estUD_list) <- species
 
-for (i in 1:length(species)){
-  sp<-species[i]
-  estUD_list[[sp]]<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_bb_3_groups_",timegrp,".rda"))
+for (k in 1:length(species)){
+  sp<-species[k]
+  estUD_list[[sp]]<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_3_groups.rda"))
   }
 
 CON<-NULL
 polys<-NULL
-for (i in 1:length(species)){
-  sp<-species[i]
+for (j in 1:length(species)){
+  sp<-species[j]
   estUD<-estUD_list[[sp]]
   estUD$all$den_sum@proj4string<-CRS(projWant)
   estUD$all$den_sum@vol = FALSE
@@ -75,9 +76,8 @@ for (i in 1:length(species)){
   dat<-fortify(estUD.con.wgs84)
   dat$species<-sp
   CON<-rbind(CON,dat)
-  if (length(polys)==0){polys<-estUD.con}
-  if (length(polys)==0) next
-  polys<-bind(polys,estUD.con)
+  if (j==1) polys<-estUD.con
+  if (j>1) polys<-bind(polys,estUD.con)
   }
 
 #grouping variables for ggplot
@@ -133,7 +133,7 @@ B<-ggplot()+
 
 quartz(width=10,height=6)
 OR<-grid.arrange(A,B,nrow=1)
-ggsave(OR,filename = paste0(dir,"Allspecies","Oregon_wUSEEZ_all","_","all",".png"),width=10,height=6, dpi = 300)
+ggsave(OR,filename = paste0(dir,"Allspecies","Oregon_wUSEEZ_","all",".png"),width=10,height=6, dpi = 300)
 
 # PNW  --------------------------------------------------------------------
 clipperName<-"PNW_wUSEEZ"
@@ -178,3 +178,43 @@ D<-ggplot()+
 quartz(width=10,height=6)
 PNW<-grid.arrange(C,D,nrow=1)
 ggsave(PNW,filename = paste0(dir,"Allspecies","PNW_wUSEEZ","_","all",".png"),width=10,height=6, dpi = 300)
+
+
+
+ggplot()+
+  geom_polygon(data=w2hr_sub,aes((long),lat,group=group),fill="grey60",color="grey60",size=0.1)+
+  geom_polygon(data=states_sub,aes((long),lat,group=group),fill="grey60",color="grey60",size=0.1)+
+  geom_tile(data = f%>%
+              filter(is.na(layer)==FALSE)%>%
+              filter(clip_grp=="PNW_wUSEEZ_all") , 
+            aes(x = x, y = y, fill = as.factor(layer))) +
+  scale_fill_viridis_d(direction = (-1)) +
+  geom_path(data=clip,aes(x=long,y=lat), color="grey50")+
+  geom_path(data=buf,aes(x=long,y=lat), color="grey75")+
+  labs(fill = "Core Area\nOverlap\n(# species)")+
+  coord_fixed(ratio=1.7,xlim = c((-130),(-122)),ylim=c(41,47))+
+  xlab("Longitude")+
+  ylab("Latitude")+
+  theme_classic()
+
+# sample sizes inside polys -----------------------------------------------
+TSUM<-NULL
+for (i in 1:nrow(grps)){
+  clipperName<- grps$clipperName[i]
+  timegrp<- grps$timegrp[i]  
+  
+  for (k in 1:length(species)){
+    sp<-species[k]
+    segments<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
+    segments<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_1_segments.rda"))
+    tracksums.out<-segments$tracksums.out
+    tracksums.out$species<-sp
+    tracksums.out$clipper<-clipperName
+    tracksums.out$timegrp<-timegrp
+    TSUM<-rbind(TSUM,tracksums.out)
+    }
+}
+
+TSUM%>%group_by(timegrp,clipper,species)%>%
+  summarise(nBirds=n_distinct(uniID),
+            nSegs=n_distinct(seg_id))

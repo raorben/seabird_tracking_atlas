@@ -41,15 +41,21 @@ sapply(X = files.sources, FUN=source)
 
 
 #TABLES needed to run SDAFreitas_CCESTA filter function
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2019-11-23_804birds.csv"),header=T, sep=",", 
+meta<-read.table(paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.csv"),header=T, sep=",", 
                  strip.white=T, na.strings=c("NA","NaN", " ",""),stringsAsFactors = FALSE)
+meta$datetime_deploy_UTC<-mdy_hm(meta$datetime_deploy_UTC)
+meta$datetime_end_track_UTC<-mdy_hm(meta$datetime_end_track_UTC)
+meta$datetime_recover_UTC<-mdy_hm(meta$datetime_recover_UTC)
+meta$datetime_start_track_UTC<-mdy_hm(meta$datetime_start_track_UTC)
+str(meta)  
+saveRDS(meta,paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.rds"))
 
 parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 
 (t<-meta%>%dplyr::filter(species==sp)%>%dplyr::filter(loc_data==1)%>%
   group_by(deploy_year,deploy_site,collab1_point_contact_name,location_type)%>%
-  dplyr::summarize(n_birds=n_distinct(tag_id),minDate=date(min(datetime_deploy_UTC))))
+  dplyr::summarize(n_birds=n_distinct(STA_id),minDate=date(min(datetime_deploy_UTC))))
 t$species<-sp
 write.table(t, file=paste0(dir,"species/DataSetSum.csv"),sep = ",", append = TRUE,col.names = NA)
 
