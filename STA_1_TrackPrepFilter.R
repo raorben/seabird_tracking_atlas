@@ -23,6 +23,7 @@ sp="STAL" #run Nov19 all years, looks good, need to add Aleutian birds
 sp="RTLO" #run Sept19 all years, looks good
 sp="PALO" #run Sept19 all years, looks good
 sp="NOFU" #run Sept19 all years, 2 birds in EEZ, one other whose track needs cleaning
+sp="LAAL"
 
 # Set main dir: Sys.info()[7] is the username for the computer.  fill in the "" with your user name 
 #if(Sys.info()[7]=="rachaelorben") {dir<-"/Volumes/GoogleDrive/My Drive/Seabird_Oceanography_Lab/SeabirdTrackingAtlas/"}
@@ -55,7 +56,8 @@ lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=
 
 (t<-meta%>%dplyr::filter(species==sp)%>%dplyr::filter(loc_data==1)%>%
   group_by(deploy_year,deploy_site,collab1_point_contact_name,location_type)%>%
-  dplyr::summarize(n_birds=n_distinct(STA_id),minDate=date(min(datetime_deploy_UTC))))
+  dplyr::summarize(n_birds=n_distinct(STA_id),minDate=min(datetime_deploy_UTC),
+                                                           minDate2=min(datetime_start_track_UTC)))
 t$species<-sp
 write.table(t, file=paste0(dir,"species/DataSetSum.csv"),sep = ",", append = TRUE,col.names = NA)
 
@@ -67,7 +69,7 @@ tf_out<-track_prep_filter(species=sp,
                           year=NA,
                           dir=dir,
                           dir.in=paste0(dir,"species/",sp,"/1_DataIn"),
-                          tagtype="gps", #ptt #gps
+                          tagtype="ptt", #ptt #gps
                           lcerrref="costa",
                           parameters=parameters,
                           meta=meta,
@@ -75,7 +77,7 @@ tf_out<-track_prep_filter(species=sp,
 tracks_filt<-tf_out$tracks_filt
 tf_plots<-tf_out$tf_plot #list of ggplots showing prefiltered and filtered locations  
 tf_info<-tf_out$tf_info
-tf_missing<-tf_out$missing
+tf_missing<-tf_out$missing #ids of missing data - should be empty
 
 # Makes Quality Control plots for Freitas Filter --------------------------
 pdf(paste0(dir,"species/",sp,"/QCplots_",sp,"_trackfilter.pdf"), onefile = TRUE)

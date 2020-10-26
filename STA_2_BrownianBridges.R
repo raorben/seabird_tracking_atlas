@@ -25,13 +25,14 @@ sp="PFSH" #run Sept19 all years, looks good
 sp="SOSH" #run Sept19 all years, looks good
 sp="STAL" #need to remake datafiles
 sp="BRAC" #TODO: get & compile GPS data 2014
-sp="WEGU" #TODO: add to metadata
+sp="WEGU" #run Sept2020, looks ok
 sp="RTLO" #run Sept2020, looks good
 sp="PALO" #run Sept2020, looks good
 sp="NOFU" #run Sept19 all years, looks good
+sp="LAAL"
 
 ##grouping used to make brownian bridges
-timegrp<-"all" #"year", "all", "season"
+timegrp<-"season" #"year", "all", "season"
 
 # set directories
 if(Sys.info()[7]=="rachaelorben") {dir<-"/Users/rachaelorben/Research/SeabirdTrackingAtlas/"} ##RAO
@@ -59,9 +60,11 @@ plot(clipper_list$clipper_proj, axes=T,  border="gray") #clipper
 plot(clipper_list$clipperbuff_proj, add=T) #buffer
 
 # read in bird metadata ---------------------------------------------------
-meta<-read.table(paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.csv"),header=T, sep=",", strip.white=T, na.strings = "")
-meta<-meta[meta$species==sp,]
-  meta%>%filter(loc_data==1)%>%group_by(species,deploy_year, deploy_site)%>%summarise(n=n())
+meta<-readRDS(paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.rds"))
+meta<-meta%>%filter(species==sp)
+meta%>%filter(loc_data==1)%>%
+  group_by(species,deploy_year, deploy_site)%>%
+  summarise(n=n())
 
 # reads in Frietas filtered tracking data for species
 # get speed value used in argosfilter::sdafilter
@@ -109,12 +112,17 @@ tracks_seg_df<-calc_leavetimesegs(hrs=72,
 unique(tracks_seg_df$seg_id) #how many segments?
 length(unique(tracks_seg_df$seg_id))
 b<-tracks_seg_df%>%group_by(seg_id)%>%summarise(n=n())
+
+##For GPS data get rid of very short segments <10points
+#longIDs<-tracks_seg_df%>%group_by(seg_id)%>%summarise(n=n())%>%filter(n>10)%>%select(seg_id)
+#tracks_seg_df<-tracks_seg_df%>%filter(seg_id %in% longIDs$seg_id)
+#tracks_seg_df<-tracks_seg_df%>%filter(seg_id!="741_2017_all_5")
 summary(tracks_seg_df)
 
 # Calculate Segment BrownianBridges ------------------------------------
 cellsize<-3000
 resolution="3km" # cell size in km, used in file names
-mino=3 # IMPORTANT to be small for PTT datasets, use 10+ for GPS data
+minNo=3 # IMPORTANT to be small for PTT datasets, use 10+ for GPS data
 segments<-bb_segmentation(tracks=tracks_seg_df, #tracking data
                             clipperName, #e.g. "PACSEA_buff33_coastclip", must match what you have used.
                             CLIPPERS=clipper_list, #output from: PolygonPrep_CCESTA with desired polygon
@@ -149,10 +157,10 @@ dev.off()
 #year:  
 #tracksums.out$timegrp<-lubridate::year(tracksums.out$date.begin)
 #all:
-tracksums.out$timegrp<-"all"
+#tracksums.out$timegrp<-"all"
 #season
-#tracksums.out$timegrp<-NA
-#tracksums.out$timegrp<-sapply(strsplit(tracksums.out$uniID, split='_', fixed=TRUE), function(x) (x[3]))
+tracksums.out$timegrp<-NA
+tracksums.out$timegrp<-sapply(strsplit(tracksums.out$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 
 bbindis<-bb_individuals(bb_probabilitydensity=bb, #Output from IndividualBB
@@ -184,10 +192,10 @@ bbgroups<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timeg
 #year
 #tracks_inpoly.df$timegrp<-lubridate::year(tracks_inpoly.df$utc)
 #all
-tracks_inpoly.df$timegrp<-"all"
+#tracks_inpoly.df$timegrp<-"all"
 #season
-#tracks_inpoly.df$timegrp<-NA
-#tracks_inpoly.df$timegrp<-sapply(strsplit(tracks_inpoly.df$uniID, split='_', fixed=TRUE), function(x) (x[3]))
+tracks_inpoly.df$timegrp<-NA
+tracks_inpoly.df$timegrp<-sapply(strsplit(tracks_inpoly.df$uniID, split='_', fixed=TRUE), function(x) (x[3]))
 
 #summary of data inside polygon
 idsinpoly<-unique(tracksums.out$uniID)
