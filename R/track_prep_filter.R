@@ -324,6 +324,7 @@ track_prep_filter<-function(species,
     if(length(track$UniID_gap)>0){
       track$UniID_gap<-as.character(track$UniID_gap)}
     
+    track$device_id<-as.character(track$device_id)
     # bind all filtered tracks
     Tracks<-bind_rows(Tracks,track)
     rm(track)}

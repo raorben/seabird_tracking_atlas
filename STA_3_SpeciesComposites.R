@@ -10,6 +10,8 @@ library(stringr)
 library(dplyr)
 library(trip) #segmentleavetime
 library(lubridate)
+library(tidyr)
+library(widyr)
 
 #plotting
 library(ggplot2) #tracksclipped
@@ -81,8 +83,8 @@ for (j in 1:length(species)){
   dat<-fortify(estUD.con.wgs84)
   dat$species<-sp
   CON<-rbind(CON,dat)
-  if (j==1) polys<-estUD.con
-  if (j>1) polys<-bind(polys,estUD.con)
+  if (j==1) polys<-estUD.con.wgs84
+  if (j>1) polys<-bind(polys,estUD.con.wgs84)
   }
 
 #grouping variables for ggplot
@@ -204,16 +206,15 @@ for (i in 1:nrow(grps)){
     }
 }
 
-a<-TSUM%>%group_by(timegrp,clipper,species)%>%
+(a<-TSUM%>%group_by(timegrp,clipper,species)%>%
   summarise(nBirds=n_distinct(uniID),
-            nSegs=n_distinct(seg_id))
+            nSegs=n_distinct(seg_id)))
 
 
 
 
 # count number of sp:sp shared grid cells ---------------------------------
 sp_polyies<-names(estUDvol_list)
-str()
 
 
 SP_polyct<-NULL
@@ -234,217 +235,122 @@ for (i in 1:length(sp_polyies)){
 }
   
 
-SP_polyct%>%filter(poly=="Oregon")%>%filter(poly=="Oregon")
-
-SP_polyct.sum<-SP_polyct%>%group_by(x,y)%>%
+# Oregon ------------------------------------------------------------------
+SP_polyct.sum_OR<-SP_polyct%>%group_by(x,y)%>%
   filter(is.na(layer)==FALSE)%>%
   filter(poly=="Oregon")%>%
   pivot_wider(id_cols = c(x,y), 
               names_from = c(sp),
               values_from = c("layer"))
 
-SP_polyct.sum$group<-1:nrow(SP_polyct.sum)
+SP_polyct.sum_OR$group<-1:nrow(SP_polyct.sum_OR)
 
-SP_polyct.sum.grp<-SP_polyct.sum%>%pivot_longer(cols = BFAL:WEGU,
+SP_polyct.sum.grp_OR<-SP_polyct.sum_OR%>%pivot_longer(cols = BFAL:WEGU,
                              names_to = c("sp"),
                              values_to = "layer")
 
-pairwise_count(SP_polyct.sum.grp%>%filter(is.na(layer)==FALSE), sp, group)
+SP_polyct.SG_OR<-SP_polyct.sum.grp_OR%>%
+  filter(is.na(layer)==FALSE)%>%
+  ungroup()%>%
+  select(-x,-y)
+                                                    
+SP_polyct.SG_counts_OR<-pairwise_count(SP_polyct.SG_OR, sp, group)
 
 
-SP_polyct$YN<-SP_polyct$layer
-SP_polyct$YN[is.na(SP_polyct$YN)==TRUE]<-0
-SP_polyct$YN[SP_polyct$YN>0]<-1
+# NCC ---------------------------------------------------------------------
 
-SP_polyct %>% 
-  select(-poly, -layer,-x,-y) %>% 
-  spread(value = YN,key=sp) %>% 
-  {crossprod(as.matrix(.))} %>% 
-  `diag<-`(0)
+SP_polyct.sum_NCC<-SP_polyct%>%group_by(x,y)%>%
+  filter(is.na(layer)==FALSE)%>%
+  filter(poly=="PNW")%>%
+  pivot_wider(id_cols = c(x,y), 
+              names_from = c(sp),
+              values_from = c("layer"))
 
-food_combination <- SP_polyct %>% group_by(sp)%>%
-  pull(YN) %>%
-  unique() %>%
-  combn(2) %>%
-  t() %>%
-  as_tibble() %>%
-  mutate(count = map2_int(V1, V2, 
-                          ~sum(apply(SP_polyct.sum %>% select(.x, .y), 1, sum) == 2)))
-# apply the function 
-count_combos(SP_polyct, 
-             group_col1="sp", group_col2="sp", count_col="YN")
+SP_polyct.sum_NCC$group<-1:nrow(SP_polyct.sum_NCC)
 
+SP_polyct.sum.grp_NCC<-SP_polyct.sum_NCC%>%pivot_longer(cols = BFAL:WEGU,
+                                                      names_to = c("sp"),
+                                                      values_to = "layer")
 
-nam <- c("IDNum",paste0("Var",1:6))
-n <- 5
-set.seed(23)
-dat <- setNames(data.frame(1:n,replicate(6,sample(0:1,n,replace=TRUE))),nam)
-data.frame(table(dat[-1]))
+SP_polyct.SG_NCC<-SP_polyct.sum.grp_NCC%>%
+  filter(is.na(layer)==FALSE)%>%
+  ungroup()%>%
+  select(-x,-y)
 
+SP_polyct.SG_counts_NCC<-pairwise_count(SP_polyct.SG_NCC, sp, group)
+
+SP_polyct.SG_counts_NCC<-SP_polyct.SG_counts_NCC%>%filter(item1!="BFAL")
+SP_polyct.SG_counts_NCC<-SP_polyct.SG_counts_NCC%>%filter(item1!="BFAL")
+
+quartz(width=5,height=4)
 ggplot()+
-  geom_point(data=PFSH,aes(x=x,y=y,color=PFSH.l),size=.2)+
-  geom_point(data=oBP,aes(x=x,y=y),color="red",alpha=.3,size=.2)
-  
-BFAL<-rename(BFAL,"BFAL.l"="layer")
-PFSH<-rename(PFSH,"PFSH.l"="layer")
-
-sp<-full_join(BFAL,PFSH,by=c("x"="x","y"="y"))
-
-oBP<-sp%>%filter(is.na(BFAL.l)==FALSE & is.na(PFSH.l)==FALSE)
-
-unique(BFAL$layer)
-plot(r2)
-lines(p)
-}
-# identify species combinations for the grid cells with 2,3,& 4 sp --------
-
-
-
-# example input
-df1 <- read.table(text = "
-                  Gene      BRCA         THYM         TGHJ
-                  ACC         23          21           7
-                  XTG         12          13           9
-                  CFG         45          4            8", header = TRUE)
-
-
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
-df1 <- read.table(text = "
-Gene      BRCA         THYM         TGHJ
-ACC         23          21           7
-XTG         12          13           9
-CFG         45          4            8", header = TRUE)
-
-plotDat <- gather(df1, key = "Gene2", value = "value", -Gene)
-
-ggplot(plotDat, aes(Gene, Gene2, col = value, fill = value, label = value)) +
-  geom_tile() +
+  geom_tile(data=SP_polyct.SG_counts_NCC, 
+            aes(x=item1, y=item2, col = n, fill = n, label = n)) +
   geom_text(col = "black") +
-  theme_minimal() +
-  scale_fill_gradient2(low = "white", mid = "yellow", high = "red") +
-  scale_color_gradient2(low = "white", mid = "yellow", high = "red")
+  scale_fill_gradient2(name="Count",low = "white", mid = "yellow", high = "red") +
+  scale_color_gradient2(name="Count",low = "white", mid = "yellow", high = "red")+
+  geom_abline(intercept = 0, slope = 1)+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=45,vjust = .8),
+        axis.title = element_blank())
+quartz.save(file = paste0(dir,"PairedSpecies","NCC_wUSEEZ","_","all",".png"), dpi = 300)
 
+quartz(width=5,height=4)
+ggplot()+
+  geom_tile(data=SP_polyct.SG_counts_OR, 
+            aes(x=item1, y=item2, col = n, fill = n, label = n)) +
+  geom_text(col = "black") +
+  scale_fill_gradient2(name="Count",low = "white", mid = "light blue", high = "dark blue") +
+  scale_color_gradient2(name="Count",low = "white", mid = "light blue", high = "dark blue")+
+  geom_abline(intercept = 0, slope = 1)+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=45,vjust = .8),
+        axis.title = element_blank())
+quartz.save(file = paste0(dir,"PairedSpecies","_OR_wUSEEZ","_","all",".png"),dpi = 300)
 
-category <- c('food','food','food','food','food','food','edibles','edibles','edibles','edibles', 'edibles')
-location <- c('houston, TX', 'houston, TX', 'las vegas, NV', 'las vegas, NV', 'philadelphia, PA', 'philadelphia, PA', 'austin, TX', 'austin, TX', 'charlotte, NC', 'charlotte, NC', 'charlotte, NC')
-item <- c('apple', 'banana', 'apple', 'pear', 'apple', 'pear', 'pear', 'apple', 'apple', 'pear', 'banana')
+# groups of three ---------------------------------------------------------
+SP_polyct.SG34_OR<-SP_polyct.SG_OR%>%filter(layer>2)
+SP_polyct.SG34_OR$poly<-"OR"
+SP_polyct.SG34_NCC<-SP_polyct.SG_NCC%>%filter(layer>2)
+SP_polyct.SG34_NCC$poly<-"NCC"
+SP_polyct.SG34<-rbind(SP_polyct.SG34_OR,SP_polyct.SG34_NCC)
 
-food_data <- data.frame(cbind(category, location, item), stringsAsFactors = FALSE)
+grps<-unique(SP_polyct.SG34$group)
+plys<-unique(SP_polyct.SG34$poly)
 
-library(tidyverse)
-
-food_data2 <- food_data %>%
-  mutate(count = 1) %>%
-  spread(item, count, fill = 0) 
-
-food_combination <- food_data %>%
-  pull(item) %>%
-  unique() %>%
-  combn(2) %>%
-  t() %>%
-  as_tibble() %>%
-  mutate(count = map2_int(V1, V2, 
-                          ~sum(apply(food_data2 %>% select(.x, .y), 1, sum) == 2)))
-
-# View the result
-food_combination
-# A tibble: 3 x 3
-V1     V2 count
-<chr>  <chr> <int>
-  1  apple banana     2
-2  apple   pear     4
-3 banana   pear     1
-
-
-library("dplyr")
-
-# a function to apply to `food_data` from the original post 
-count_combos <- function(df, group_col1, group_col2, count_col){ 
+multi_grps<-NULL
+for (k in 1:length(plys)){
+  SP_polyct.SG34.p<-SP_polyct.SG34%>%filter(poly==plys[k])
   
-  # use `combn()` to get all the unique pairs from the `$items` col
-  combos <- t(combn(sort(unique(df[[count_col]])), 2)) %>% 
-    as_data_frame() %>% 
-    # initialize an empty column to catch the counts 
-    mutate(count=NA)
-  
-  # create a new df from the colnames passed as args, 
-  # (it would be more general to just use the dplyr evaluation system (@_@))
-  df <- data_frame(
-    group_col1 = df[[group_col1]],
-    group_col2 = df[[group_col2]],
-    count_col  = df[[count_col]]
-  )
-  # for each combo of the grouping vars, get a pipe-seperated string of items
-  df <- df %>% 
-    group_by(group_col1, group_col2) %>% summarize(
-      items = paste(unique(count_col), collapse="|")
-    ) %>% ungroup()
-  
-  # for each item pair/combo, get the number of rows of `df` with both items 
-  combos$count <- sapply(1:nrow(combos), function(x){
-    sum(grepl(combos$V1[x], df$items) & grepl(combos$V2[x], df$items))
-  })
-  # and return it in a nice df
-  return(combos)
+for (i in 1:length(grps)){
+  g<-grps[i]
+  indis<-SP_polyct.SG34.p%>%filter(group==g)
+  indis<-indis%>%arrange(sp)
+  n=nrow(indis)
+  sps<-paste(indis$sp, collapse = "_")
+  dat<-data.frame(sp_group=sps,gridcell=g,n=n,poly=plys[k])
+  multi_grps<-rbind(multi_grps,dat)
+}    
 }
 
+multi_grps_sum<-multi_grps%>%filter(n==3)%>%
+  group_by(sp_group)%>%
+  summarise(n=n())
 
-require(utils)
+quartz(height=5,width=7)
+ggplot()+
+  geom_histogram(data=multi_grps%>%filter(n>2),
+                 aes(x=sp_group,color=poly,fill=poly),stat="count",position="dodge" )+
+  theme_classic()+
+  theme(axis.text.x = element_text(angle=90,vjust = .1),
+        axis.title = element_blank())
+quartz.save(file = paste0(dir,"MultiGroupOverlapSpecies","_","all",".png"),dpi = 300)
 
-expand.grid(height = seq(60, 80, 5), weight = seq(100, 300, 50),
-            sex = c("Male","Female"))
+data=multi_grps%>%filter(n>2)
+sps<-as.character(unique(data$sp_group))
+unique(unlist(stringr::str_split(sps,pattern="_")))
 
-x <- seq(0, 10, length.out = 100)
-y <- seq(-1, 1, length.out = 20)
-d1 <- expand.grid(x = x, y = y)
-d2 <- expand.grid(x = x, y = y, KEEP.OUT.ATTRS = FALSE)
-object.size(d1) - object.size(d2)
-##-> 5992 or 8832 (on 32- / 64-bit platform)
+data=multi_grps%>%filter(n==4)
+sps<-as.character(unique(data$sp_group))
+unique(unlist(stringr::str_split(sps,pattern="_")))
 
-
-require(data.table) ## 1.9.4+
-set.seed(1L)        ## For reproducibility
-N = 2724098L
-motif = sample(paste("motif", 1:1716, sep="_"), N, TRUE)
-id = sample(83509, N, TRUE)
-DT = data.table(id, motif)
-
-motif_pairs <- combn(unique(dat$motif), 2)
-colnames(motif_pairs) <- apply(motif_pairs, 2, paste, collapse = " ")
-motif_pair_counts <- apply(motif_pairs, 2, function(motif_pair) {
-  sum(daply(dat[dat$motif %in% motif_pair, ], .(id), function(dat_subset){
-    all(motif_pair %in% dat_subset$motif)
-  }))
-})
-motif_pair_counts <- as.data.frame(unname(cbind(t(motif_pairs), motif_pair_counts)))
-names(motif_pair_counts) <- c("motif1", "motif2", "count")
-motif_pair_counts
-
-
-
-df <- stack(cladelist) %>%
-  dplyr::rename(clade = "ind", artifact = "values")
-df %>%
-  widyr::pairwise_count(feature = clade, item = artifact) %>%
-  filter(item1 > item2) %>%
-  mutate(Pair = paste(item1, item2, sep = "/")) %>%
-  dplyr::select(Pair, Count = n) 
-
-
-
-library(widyr)
-
-dat <- tibble(group = rep(1:5, each = 2),
-              letter = c("a", "b",
-                         "a", "c",
-                         "a", "c",
-                         "b", "e",
-                         "b", "f"))
-
-# count the number of times two letters appear together
-pairwise_count(dat, letter, group)
-pairwise_count(dat, letter, group, sort = TRUE)
-pairwise_count(dat, letter, group, sort = TRUE, diag = TRUE)
