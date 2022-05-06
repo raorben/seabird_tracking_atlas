@@ -49,7 +49,7 @@ meta$datetime_end_track_UTC<-mdy_hm(meta$datetime_end_track_UTC)
 meta$datetime_recover_UTC<-mdy_hm(meta$datetime_recover_UTC)
 meta$datetime_start_track_UTC<-mdy_hm(meta$datetime_start_track_UTC)
 str(meta)  
-saveRDS(meta,paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.rds"))
+s#aveRDS(meta,paste0(dir,"supporttables/STA_metadata_2020-10-19_908birds.rds"))
 
 parameters <- read.csv (paste0(gitdir,"supporttables/parameters.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)
 lcerrors <- read.csv(paste0(gitdir,"supporttables/lcerrors.csv"), header=T, sep=",", strip.white=T,stringsAsFactors = FALSE)

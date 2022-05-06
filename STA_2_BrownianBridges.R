@@ -91,6 +91,12 @@ tracks_inpoly<-in_poly(all_tracks=tracks_filt_grp,
 clipper.plots<-tracks_inpoly$Clipper.Plots
 tracks_inpoly.df<-tracks_inpoly$tracks.out #all locations w/ in-out poly
 
+#creates a summary table of the bird data inside the area of interest & saves with clipper name and timegrouping
+meta_in_poly<-tracks_inpoly.df%>%filter(in_poly==1)%>%
+  group_by(deploy_site,year,collab1_point_contact_name)%>%
+  summarise(n_birds=n_distinct(ptt))
+write.csv(meta_in_poly,paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"bird_meta_in_poly.csv"))
+
 saveRDS(tracks_inpoly.df,file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_0_tracks_inpoly.df.rda"))
 tracks_inpoly.df<-readRDS(file=paste0(dir,"species/",sp,"/",sp,"_",clipperName,"_",timegrp,"_bb_0_tracks_inpoly.df.rda"))
 
